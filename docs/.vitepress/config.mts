@@ -79,6 +79,10 @@ export default defineConfig({
               text: "第 13 章：仕上げ・デプロイ準備",
               link: "/training/13-finishing",
             },
+            {
+              text: "第 14 章：テーマを導入してみよう",
+              link: "/training/14-theme",
+            },
           ],
         },
       ],
