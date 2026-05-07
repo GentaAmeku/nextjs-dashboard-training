@@ -41,6 +41,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# vitepress
+docs/.vitepress/dist
+docs/.vitepress/cache
+
 # database
 local.db
 local.db-journal

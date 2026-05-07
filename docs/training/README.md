@@ -127,8 +127,8 @@ git commit -m "ch01: Next.js + Biome のセットアップ"
 
 ## 参考リンク
 
-- [このリポジトリの README](../../README.md)
-- [CLAUDE.md（設計思想・コーディング規約）](../../CLAUDE.md)
+- [このリポジトリの README](https://github.com/GentaAmeku/nextjs-dashboard-training/blob/main/README.md)
+- [CLAUDE.md（設計思想・コーディング規約）](https://github.com/GentaAmeku/nextjs-dashboard-training/blob/main/CLAUDE.md)
 - [Next.js 公式ドキュメント](https://nextjs.org/docs)
 - [Better Auth 公式ドキュメント](https://www.better-auth.com/docs)
 - [Drizzle ORM 公式ドキュメント](https://orm.drizzle.team/docs)

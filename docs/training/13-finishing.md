@@ -378,7 +378,7 @@ pnpm start
 | ルーティングとレイアウト | Next.js App Router・ルートグループ      |
 | UI コンポーネント        | Tailwind CSS v4・shadcn/ui              |
 | データベース             | Drizzle ORM・SQLite                     |
-| エラー処理               | Result<T> 型・AppError                 |
+| エラー処理               | `Result<T>` 型・AppError               |
 | バリデーション           | Zod・drizzle-zod                        |
 | フォーム送信             | Server Actions・useActionState          |
 | クライアントフォーム     | react-hook-form・zodResolver            |
