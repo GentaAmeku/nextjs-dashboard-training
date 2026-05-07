@@ -2,6 +2,12 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/*
+ * dark バリアントの定義。
+ * <html> 要素または祖先要素に .dark クラスが付与された場合に
+ * Tailwind の dark: プレフィックス（例: dark:bg-background）が有効になる。
+ * next-themes は attribute="class" の設定によって <html class="dark"> を自動的に付与する。
+ */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -48,6 +54,17 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * ==========================================
+ * ライトテーマ（デフォルト）
+ * ==========================================
+ * :root に定義された変数がライトモード時の基準値となる。
+ * next-themes の defaultTheme="light" と対応しており、
+ * <html> にクラスがない（または class="light"）場合に適用される。
+ *
+ * 変数名と Tailwind トークンの対応は @theme inline ブロックで定義している。
+ * 例: --background → @theme の --color-background → bg-background クラスで参照可能
+ */
 :root {
   --radius: 0.625rem;
   --card: oklch(1 0 0);
@@ -83,6 +100,14 @@
   --foreground: oklch(0.147 0.004 49.3);
 }
 
+/*
+ * ==========================================
+ * ダークテーマ
+ * ==========================================
+ * next-themes が <html class="dark"> を付与したときに適用される。
+ * :root の変数を上書きすることでテーマを切り替える仕組み。
+ * Tailwind の dark: バリアントも @custom-variant の定義によって同時に有効になる。
+ */
 .dark {
   --background: oklch(0.147 0.004 49.3);
   --foreground: oklch(0.986 0.002 67.8);
@@ -116,6 +141,28 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.547 0.021 43.1);
 }
+
+/*
+ * ==========================================
+ * 追加カラーテーマ（将来の拡張用）
+ * ==========================================
+ * 新しいカラーテーマを追加する手順:
+ *   1. lib/constants/themes.ts の THEMES 配列にエントリを追加する
+ *      例: { id: "ocean", label: "オーシャン", Icon: Waves }
+ *   2. 以下に対応する CSS クラスと変数セットを定義する
+ *      クラス名は themes.ts の id と一致させること（next-themes がクラスを付与する）
+ *
+ * 使用できる変数名は :root / .dark を参照。すべての変数を上書きする必要はなく、
+ * 変えたい色だけオーバーライドすれば :root の値がフォールバックとして機能する。
+ *
+ * 例:
+ *   .ocean {
+ *     --background: oklch(0.95 0.02 220);
+ *     --foreground: oklch(0.15 0.02 220);
+ *     --primary: oklch(0.45 0.18 220);
+ *     --primary-foreground: oklch(0.98 0.005 220);
+ *   }
+ */
 
 @layer base {
   * {

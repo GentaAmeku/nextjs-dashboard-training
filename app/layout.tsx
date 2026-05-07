@@ -8,7 +8,9 @@ import {
 import AppHeader from "@/components/AppHeader";
 import AppSidebar from "@/components/AppSidebar";
 import PageContainer from "@/components/PageContainer";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { THEME_IDS } from "@/lib/constants/themes";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
@@ -42,6 +44,7 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
+      suppressHydrationWarning
       className={cn(
         "font-sans",
         notoSans.variable,
@@ -51,13 +54,21 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SidebarProvider>
-          <AppSidebar />
-          <main className="w-full">
-            <AppHeader />
-            <PageContainer>{children}</PageContainer>
-          </main>
-        </SidebarProvider>
+        <ThemeProvider
+          attribute="class"
+          themes={THEME_IDS}
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange
+        >
+          <SidebarProvider>
+            <AppSidebar />
+            <main className="w-full">
+              <AppHeader />
+              <PageContainer>{children}</PageContainer>
+            </main>
+          </SidebarProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
