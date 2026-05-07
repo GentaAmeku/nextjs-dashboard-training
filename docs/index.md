@@ -9,9 +9,6 @@ hero:
     - theme: brand
       text: 研修を始める →
       link: /training/00-orientation
-    - theme: alt
-      text: 目次を見る
-      link: /training/
 
 features:
   - icon: 📚
