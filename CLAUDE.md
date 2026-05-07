@@ -147,6 +147,68 @@ Server Actions を `useActionState` で呼ぶパターンを採用。prev state 
 
 ---
 
+## テーマ
+
+`next-themes` を使ってライト / ダーク / カスタムテーマの切り替えを実装している。
+
+### 仕組み
+
+```
+THEMES 定数（themes.ts）
+    ↓ id の一覧を ThemeProvider に渡す
+ThemeProvider（layout.tsx）
+    ↓ attribute="class" で <html class="dark"> を付与
+CSS 変数（globals.css の :root / .dark / .ocean ...）
+    ↓ クラスに対応した変数セットが有効になる
+Tailwind ユーティリティ（bg-background など）
+    ↓ CSS 変数を参照
+画面の色が切り替わる
+```
+
+### ファイル構成
+
+| ファイル | 役割 |
+|---|---|
+| `lib/constants/themes.ts` | テーマ定義（`THEMES` / `THEME_IDS`）の単一管理場所 |
+| `components/ThemeProvider.tsx` | next-themes のラッパー（`"use client"` を閉じ込める） |
+| `components/AppHeader/components/ToggleThemeButton/` | ドロップダウンで切り替えるボタン |
+| `app/globals.css` | `:root`（ライト）/ `.dark` / カスタムテーマの CSS 変数 |
+
+### 新しいテーマを追加する手順
+
+**変更箇所は 2 ファイルだけ。**
+
+```ts
+// 1. lib/constants/themes.ts に追加
+import { Waves } from "lucide-react";
+
+export const THEMES: ThemeDef[] = [
+  { id: "light", label: "ライト", Icon: Sun },
+  { id: "dark",  label: "ダーク", Icon: Moon },
+  { id: "ocean", label: "オーシャン", Icon: Waves }, // ← 追加
+];
+```
+
+```css
+/* 2. app/globals.css の「追加カラーテーマ」コメントの下に追加 */
+/* クラス名は themes.ts の id と一致させること */
+.ocean {
+  --background: oklch(0.96 0.025 220);
+  --foreground: oklch(0.15 0.03 220);
+  --primary: oklch(0.45 0.18 220);
+  --primary-foreground: oklch(0.98 0.005 220);
+  /* 変えたい変数だけ上書き。未定義の変数は :root の値にフォールバック */
+}
+```
+
+`ThemeProvider`・`ToggleThemeButton`・Tailwind クラスは変更不要。`THEMES` を読んで自動で反映される。
+
+### 注意点
+
+- `<html suppressHydrationWarning>` が必要 — next-themes は初回描画時に localStorage の値で `<html>` の class を書き換えるため、サーバー HTML との差異が出て React の hydration 警告が発生する。このフラグで警告だけを抑制する（バグではない）。
+- `enableSystem={false}` — OS のダークモード設定への自動追従を無効にしている。明示的に選択する仕様にするため。
+- `disableTransitionOnChange` — テーマ切替の瞬間だけ CSS transition を無効にしてチカチカを防ぐ。
+
 ## コードスタイル
 
 - Biome でフォーマット・lint を統一（インデント 2 スペース、import 自動整列）
