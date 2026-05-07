@@ -1,0 +1,16 @@
+{
+  "enableAllProjectMcpServers": true,
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pnpm format",
+            "statusMessage": "Running pnpm format..."
+          }
+        ]
+      }
+    ]
+  }
+}
