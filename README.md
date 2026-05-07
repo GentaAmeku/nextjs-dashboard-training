@@ -1,6 +1,6 @@
 # 📚 Next.js Dashboard Training
 
-新人フロントエンドエンジニア向けの **Next.js ハンズオン研修教材** です。
+フロントエンドエンジニア向けの **Next.js ハンズオン研修教材** です。
 
 タスク CRUD と Google OAuth 認証を備えたダッシュボード Web アプリケーションを、ゼロから自分の手で再実装することを通じて、**Next.js 16 + React 19 の主要機能**（App Router・Server Components・Server Actions・Cache Components など）を学びます。
 

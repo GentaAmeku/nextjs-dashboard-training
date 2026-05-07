@@ -5,6 +5,10 @@ import {
   Noto_Sans,
   Playfair_Display,
 } from "next/font/google";
+import AppHeader from "@/components/AppHeader";
+import AppSidebar from "@/components/AppSidebar";
+import PageContainer from "@/components/PageContainer";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
@@ -47,7 +51,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <SidebarProvider>
+          <AppSidebar />
+          <main className="w-full">
+            <AppHeader />
+            <PageContainer>{children}</PageContainer>
+          </main>
+        </SidebarProvider>
       </body>
     </html>
   );

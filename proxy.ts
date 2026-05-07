@@ -1,11 +1,6 @@
-import { getSessionCookie } from "better-auth/cookies";
-import { type NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export function proxy(req: NextRequest) {
-  const cookie = getSessionCookie(req);
-  if (!cookie) {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
+export function proxy() {
   return NextResponse.next();
 }
 

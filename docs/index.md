@@ -3,7 +3,7 @@ layout: home
 
 hero:
   name: "Next.js Dashboard Training"
-  text: "新人フロントエンドエンジニア向け研修教材"
+  text: "フロントエンドエンジニア向け研修教材"
   tagline: Next.js 16 + React 19 をゼロから実装しながら学ぶハンズオン研修。全 14 章・約 16〜20 時間。
   actions:
     - theme: brand
