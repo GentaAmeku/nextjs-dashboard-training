@@ -22,7 +22,7 @@ export default defineConfig({
         {
           text: "研修ハンズオン手順書",
           items: [
-            { text: "目次・進め方", link: "/training/" },
+            { text: "目次・進め方", link: "/training/README" },
             {
               text: "第 00 章：はじめに / 完成形ツアー",
               link: "/training/00-orientation",
@@ -36,52 +36,52 @@ export default defineConfig({
               link: "/training/02-tailwind-shadcn",
             },
             {
-              text: "第 03 章：App Router・layout・ルート",
+              text: "第 03 章：App Router・layout・ルートグループ",
               link: "/training/03-routing",
             },
             {
-              text: "第 04 章：Drizzle + SQLite",
+              text: "第 04 章：Drizzle + SQLite [必須]",
               link: "/training/04-drizzle-sqlite",
             },
             {
-              text: "第 05 章：Result 型 / Repository 層",
-              link: "/training/05-result-repository",
+              text: "第 05 章：Server Actions + フォーム",
+              link: "/training/05-server-actions",
             },
             {
-              text: "第 06 章：Zod + Service 層",
-              link: "/training/06-zod-service",
+              text: "第 06 章：Better Auth + Google OAuth",
+              link: "/training/06-better-auth",
             },
             {
-              text: "第 07 章：Server Actions + フォーム",
-              link: "/training/07-server-actions",
+              text: "第 07 章：Cache Components",
+              link: "/training/07-cache-components",
             },
             {
-              text: "第 08 章：Better Auth + Google OAuth",
-              link: "/training/08-better-auth",
+              text: "第 08 章：nuqs + Zustand",
+              link: "/training/08-nuqs-zustand",
             },
             {
-              text: "第 09 章：Cache Components",
-              link: "/training/09-cache-components",
+              text: "第 09 章：仕上げ：Dashboard + デプロイ準備",
+              link: "/training/09-finishing",
             },
             {
-              text: "第 10 章：nuqs + Zustand",
-              link: "/training/10-nuqs-zustand",
+              text: "第 10 章：テーマを導入してみよう",
+              link: "/training/10-theme",
             },
             {
-              text: "第 11 章：Vitest でテストを書く",
-              link: "/training/11-vitest-biome",
+              text: "第 11 章：Result 型 / Repository 層 [より深く]",
+              link: "/training/11-result-repository",
             },
             {
-              text: "第 12 章：React Compiler + Turbopack",
-              link: "/training/12-react-compiler",
+              text: "第 12 章：Zod + Service 層 [より深く]",
+              link: "/training/12-zod-service",
             },
             {
-              text: "第 13 章：仕上げ・デプロイ準備",
-              link: "/training/13-finishing",
+              text: "第 13 章：Vitest でテストを書く [より深く]",
+              link: "/training/13-vitest-biome",
             },
             {
-              text: "第 14 章：テーマを導入してみよう",
-              link: "/training/14-theme",
+              text: "第 14 章：React Compiler + Turbopack [より深く]",
+              link: "/training/14-react-compiler",
             },
           ],
         },

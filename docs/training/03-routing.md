@@ -232,7 +232,7 @@ export default function LoginPage() {
       <div className="text-center">
         <h1 className="text-2xl font-bold mb-4">ログイン</h1>
         <p className="text-muted-foreground">Google でサインインしてください</p>
-        {/* 第 08 章で Google ボタンを追加します */}
+        {/* 第 06 章で Google ボタンを追加します */}
         <button
           type="button"
           className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-md"
@@ -257,7 +257,7 @@ mkdir -p "app/(authed)"
 
 ```tsx
 // app/(authed)/layout.tsx（最小限の実装）
-// 第 08 章で認証チェックを追加します
+// 第 06 章で認証チェックを追加します
 export default function AuthedLayout({
   children,
 }: {
@@ -297,7 +297,7 @@ export default function DashboardPage() {
     <div>
       <h1 className="text-2xl font-bold mb-6">ダッシュボード</h1>
       <p className="text-muted-foreground">
-        タスク統計がここに表示されます（第 13 章で実装）
+        タスク統計がここに表示されます（第 09 章で実装）
       </p>
     </div>
   );

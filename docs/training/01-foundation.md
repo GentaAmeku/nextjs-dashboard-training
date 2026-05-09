@@ -490,7 +490,7 @@ const nextConfig = {
 ```
 
 > NOTE
-> React Compiler の詳細は第 12 章で説明します。
+> React Compiler の詳細は第 14 章で説明します。
 > 今は「`useMemo` を書かなくても最適化してくれるコンパイラが動いている」とだけ覚えておきましょう。
 
 ---

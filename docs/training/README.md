@@ -25,25 +25,45 @@
 
 ## 章構成・所要時間
 
-| #    | 章タイトル                         | 到達点                                                          | 時間    |
-| ---- | ---------------------------------- | --------------------------------------------------------------- | ------- |
-| [00](./00-orientation.md) | はじめに / 完成形ツアー   | 完成版を動かし、画面・URL・データの対応をイメージできる         | 30 分   |
-| [01](./01-foundation.md)  | プロジェクト基盤の仕組み  | 空ディレクトリから `pnpm dev` で空ページ描画。RSC・Biome・Lefthook を口頭で説明可 | 90 分   |
-| [02](./02-tailwind-shadcn.md) | Tailwind v4 + shadcn/ui | `globals.css` の `@theme` を理解し、shadcn コンポーネントを表示 | 60 分   |
-| [03](./03-routing.md)     | App Router・layout・ルート | `/login`・`/`・`/tasks` の遷移と共通レイアウトが見える          | 60 分   |
-| [04](./04-drizzle-sqlite.md) | Drizzle + SQLite        | `tasks` テーブルを定義し Drizzle Studio で確認できる            | 60 分   |
-| [05](./05-result-repository.md) | Result 型 / Repository 層 | 例外を投げない `taskRepository` を実装しテストが通る            | 90 分   |
-| [06](./06-zod-service.md) | Zod + Service 層          | parse → repo → Result の流れを実装しテストが通る               | 60 分   |
-| [07](./07-server-actions.md) | Server Actions + フォーム | `/tasks/create` で送信すると SQLite に行が増える                | 120 分  |
-| [08](./08-better-auth.md) | Better Auth + Google OAuth | Google ログイン→ログアウトと二段認証ガードが機能する            | 120 分  |
-| [09](./09-cache-components.md) | Cache Components       | タスク作成後に一覧・統計が即更新される                          | 75 分   |
-| [10](./10-nuqs-zustand.md) | nuqs + Zustand           | フィルタが URL に反映、削除ダイアログが Zustand で開閉する       | 75 分   |
-| [11](./11-vitest-biome.md) | Vitest でテストを書く     | 全テストが緑になる（Biome・Lefthook は第 01 章でセットアップ済み） | 60 分   |
-| [12](./12-react-compiler.md) | React Compiler + Turbopack | `useMemo` を書かない設計の理由を説明できる（読み物中心）        | 30 分   |
-| [13](./13-finishing.md)   | 仕上げ：Dashboard + デプロイ準備 | ダッシュボード統計が表示され `pnpm start` で本番起動できる | 60 分   |
-| [14](./14-theme.md)       | テーマを導入してみよう    | ライト/ダーク切り替えが動き、オリジナルのカラーテーマを自分で追加できる | 60 分   |
+| #    | 章タイトル                         | 到達点                                                          | タグ        | 時間    |
+| ---- | ---------------------------------- | --------------------------------------------------------------- | ----------- | ------- |
+| [00](./00-orientation.md) | はじめに / 完成形ツアー   | 完成版を動かし、画面・URL・データの対応をイメージできる         | —           | 30 分   |
+| [01](./01-foundation.md)  | プロジェクト基盤の仕組み  | 空ディレクトリから `pnpm dev` で空ページ描画。RSC・Biome・Lefthook を口頭で説明可 | — | 90 分   |
+| [02](./02-tailwind-shadcn.md) | Tailwind v4 + shadcn/ui | `globals.css` の `@theme` を理解し、shadcn コンポーネントを表示 | —           | 60 分   |
+| [03](./03-routing.md)     | App Router・layout・ルート | `/login`・`/`・`/tasks` の遷移と共通レイアウトが見える          | —           | 60 分   |
+| [04](./04-drizzle-sqlite.md) | Drizzle + SQLite        | `tasks` テーブルを定義し Drizzle Studio で確認できる            | **必須**    | 60 分   |
+| [05](./05-server-actions.md) | Server Actions + フォーム | `/tasks/create` で送信すると SQLite に行が増える               | —           | 120 分  |
+| [06](./06-better-auth.md) | Better Auth + Google OAuth | Google ログイン→ログアウトと二段認証ガードが機能する           | —           | 120 分  |
+| [07](./07-cache-components.md) | Cache Components      | タスク作成後に一覧・統計が即更新される                          | —           | 75 分   |
+| [08](./08-nuqs-zustand.md) | nuqs + Zustand          | フィルタが URL に反映、削除ダイアログが Zustand で開閉する       | —           | 75 分   |
+| [09](./09-finishing.md)   | 仕上げ：Dashboard + デプロイ準備 | ダッシュボード統計が表示され `pnpm start` で本番起動できる | —           | 60 分   |
+| [10](./10-theme.md)       | テーマを導入してみよう    | ライト/ダーク切り替えが動き、オリジナルのカラーテーマを自分で追加できる | —     | 60 分   |
+| [11](./11-result-repository.md) | Result 型 / Repository 層 | `taskRepository` の中身を理解する                          | **より深く** | 90 分   |
+| [12](./12-zod-service.md) | Zod + Service 層         | `taskService` の中身を理解する                                  | **より深く** | 60 分   |
+| [13](./13-vitest-biome.md) | Vitest でテストを書く    | 全テストが緑になる                                              | **より深く** | 60 分   |
+| [14](./14-react-compiler.md) | React Compiler + Turbopack | `useMemo` を書かない設計の理由を説明できる（読み物中心）    | **より深く** | 30 分   |
 
 **合計 約 17〜21 時間（研修 2〜3 日想定）**
+
+> **タグの意味**
+> - **必須**: DB 環境セットアップのため全員が実施する章。コピーで素早く進めても OK。
+> - **より深く**: `lib/` の中身を読み解くオプション章。第 10 章まで完了してから取り組むと理解が深まります。
+
+---
+
+## 完成画面ギャラリー
+
+研修を完了すると、以下のすべての画面が動作します。
+
+![ログイン画面](../assets/06-login.png)
+![ダッシュボード](../assets/09-dashboard.png)
+![テーマ切り替え](../assets/10-theme.png)
+![タスク一覧](../assets/05-tasks.png)
+![タスク一覧（フィルタ適用）](../assets/08-tasks-filter.png)
+![タスク作成フォーム](../assets/05-create.png)
+![行アクションメニュー](../assets/09-tasks-menu.png)
+![タスク編集フォーム](../assets/05-edit.png)
+![削除確認ダイアログ](../assets/08-delete.png)
 
 ---
 
@@ -52,24 +72,20 @@
 章は以下の順序で進めてください。矢印は「先に完了させる必要がある章」を示します。
 
 ```
-00 ─┐
-    ├─> 01 ─> 02 ─> 03 ─┐
-    │                   ├─> 07（Server Actions）
-    └──> 04 ─> 05 ─> 06 ┘          │
-                                    ├─> 09（Cache）
-                        08（Auth）──┤
-                                    └─> 10（URL / クライアント状態）
-                                               │
-                                               ├─> 11（テスト）
-                                               ├─> 12（Compiler 読み物）
-                                               └─> 13（仕上げ）
+00 ─> 01 ─> 02 ─> 03 ─> 04 ─> 05 ─┐
+                                   ├─> 06 (Auth) ─┐
+                                   │              ├─> 07 (Cache) ─> 08 ─> 09 ─> 10
+                                   └──────────────┘
+
+─────────── ここから「より深く」 ───────────────
+                              10 ─> 11 ─> 12 ─> 13 ─> 14
 ```
 
-| 依存の種類          | 具体例                                      |
-| ------------------- | ------------------------------------------- |
-| **必須直列**        | 04 → 05 → 06 → 07（DB → Repo → Service → Action） |
-| **入替可**          | 02 と 03 は独立、03 と 04 はどちらが先でも可  |
-| **後回しで OK**     | 08（Auth）は 07 の後で問題なし              |
+| 依存の種類          | 具体例                                         |
+| ------------------- | ---------------------------------------------- |
+| **必須直列**        | 04 → 05（DB → Server Actions）                 |
+| **並行可**          | 05 と 06 はどちらが先でも可（06 は認証レイヤー） |
+| **より深く**        | 11–14 は 10 章完了後、いつでも取り組める        |
 
 ---
 
@@ -82,11 +98,23 @@ git switch -c training/<自分の名前>
 # 例: git switch -c training/yamada
 ```
 
-### 2. 章の手順に従って実装する
+### 2. JSX（見た目）はコピーして OK
+
+各章で JSX コードブロックの前に `[!TIP]` Callout が出てきます。コンポーネントのマークアップは **`git show main:...` でコピーして進めることを推奨** します。本章のメインはロジックの組み立て方の理解です。デザインを変えたい場合は自由に書き換えて構いません。
+
+### 3. `lib/` はリポジトリに同梱済み
+
+`lib/` 配下（DB・認証・Result 型・Repository・Service など）の完成形はすでにリポジトリに入っています。
+
+- **04章（必須）**: コピーで進めて DB 環境だけ整える
+- **06・07・10章（コピーOK）**: `lib/auth.ts` 等はコピーして設定の意味を読む
+- **11–12章（より深く）**: 第 10 章完了後に中身を読み解く
+
+### 4. 章の手順に従って実装する
 
 各章の末尾に `> CHECK` という確認リストがあります。すべてにチェックが入ったら次の章へ進みます。
 
-### 3. 詰まったら
+### 5. 詰まったら
 
 各章の `<details>` ブロックが HINT です。**まず 30 分は自力で考えてください。** それでも解決しない場合は HINT を開き、さらに詰まったら `main` ブランチの完成形コードを参照します。
 
@@ -95,11 +123,11 @@ git switch -c training/<自分の名前>
 git show main:app/(authed)/tasks/actions/tasks.ts
 ```
 
-### 4. 章ごとにコミットする
+### 6. 章ごとにコミットする
 
 ```bash
 git add -p   # 変更を確認しながらステージング
-git commit -m "ch01: Next.js + Biome のセットアップ"
+git commit -m "ch05: Server Actions でタスク CRUD を実装"
 ```
 
 最終的に PR を出して講師のレビューを受けます。
@@ -110,7 +138,7 @@ git commit -m "ch01: Next.js + Biome のセットアップ"
 
 - **`.env.local` は絶対にコミットしない**（`.gitignore` 済みですが念のため）
 - **`local.db` もコミットしない**（`.gitignore` 済み）
-- 第 08 章で Google OAuth を設定するため、事前に Google アカウントが必要です
+- 第 06 章で Google OAuth を設定するため、事前に Google アカウントが必要です
 - 不明点は Slack の研修チャンネルへ
 
 ---

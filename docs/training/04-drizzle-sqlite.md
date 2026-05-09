@@ -10,6 +10,18 @@
 
 ---
 
+> [!IMPORTANT]
+> **【必須】このリポジトリには `lib/db/` の完成形ファイルが同梱されています。**
+> `pnpm db:push` で DB を作成するのがこの章の目的です。手順は写経でも **コピーで素早く進めても問題ありません**。
+> 差分が出たら `main` ブランチを正として確認してください。
+>
+> ```bash
+> git show main:lib/db/schema.ts   # DB スキーマ定義
+> git show main:lib/db/client.ts   # Drizzle クライアント
+> ```
+
+---
+
 ## 4-1. Drizzle ORM とは
 
 **Drizzle ORM** は TypeScript ファーストな ORM（Object-Relational Mapper）です。
@@ -436,6 +448,6 @@ pnpm db:seed
 - Drizzle Studio で GUI からデータを確認できる
 - `pnpm db:seed` でサンプルデータを投入
 
-次の第 05 章では、エラーを例外ではなく **値として扱う** `Result<T>` 型と、DB アクセスのみを担う **Repository 層** を実装します。
+次の第 05 章では、**Server Actions** と `useActionState` を使ってタスクの作成・編集フォームを実装します。`taskService` を呼び出すだけで CRUD が動く体験をしましょう。
 
-→ [第 05 章：Result 型 / Repository 層](./05-result-repository.md)
+→ [第 05 章：Server Actions + フォーム](./05-server-actions.md)

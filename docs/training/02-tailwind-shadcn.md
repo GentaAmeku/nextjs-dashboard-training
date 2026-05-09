@@ -223,6 +223,15 @@ cat lib/utils.ts
 
 ### Step 3：Button コンポーネントを追加する
 
+> [!TIP]
+> **shadcn/ui コンポーネントは `pnpm dlx shadcn@latest add` コマンドで自動生成されます。**
+> 生成後のファイル内の JSX（見た目）はそのまま使って OK です。
+> デザインをカスタマイズしたい場合は `components/ui/button.tsx` などを自由に書き換えてください。
+>
+> ```bash
+> git show main:components/ui/button.tsx   # 完成形の参照
+> ```
+
 ```bash
 pnpm dlx shadcn@latest add button
 ```
