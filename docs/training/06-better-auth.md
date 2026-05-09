@@ -30,10 +30,10 @@
 
 ```mermaid
 flowchart TD
-    Browser["ブラウザ\nhttp://localhost:3000/tasks にアクセス"]
+    Browser["ブラウザ\n/tasks にアクセス"]
     Proxy["proxy.ts（Edge Runtime）\nCookie を確認"]
-    AuthGate["app/(authed)/layout.tsx の AuthGate\n（Node.js / RSC）\nDB でセッションを確認"]
-    Page["app/(authed)/tasks/page.tsx\nタスク一覧を表示"]
+    AuthGate["AuthGate（Node.js / RSC）\nDB でセッションを確認"]
+    Page["tasks/page.tsx\nタスク一覧を表示"]
     Login["/login にリダイレクト（終了）"]
 
     Browser --> Proxy

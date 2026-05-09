@@ -59,12 +59,12 @@
 flowchart TD
     A["この値はどこに置くか？"] --> B{"DB や API から\n取得するデータか？"}
 
-    B -->|YES| C["Server state\nRSC でフェッチ\n'use cache' でキャッシュ管理\n※ BFF層で表示用に整形可"]
+    B -->|YES| C["Server state\nRSC でフェッチ\ncacheTag でキャッシュ管理"]
 
     B -->|NO| D{"ユーザー操作で\n変わる値か？"}
 
     D -->|NO| E{"既存の state/props\nから計算できるか？"}
-    E -->|YES| F["Derived state\nレンダリング中に計算\nまたは BFF 層で整形して渡す"]
+    E -->|YES| F["Derived state\nレンダリング中に計算\nor BFF 層で整形"]
     E -->|NO| G["⚠️ ここには\nほぼ来ない"]
 
     D -->|YES| H{"共有・ブックマーク\nしたいか？"}
@@ -73,9 +73,9 @@ flowchart TD
     H -->|NO| J{"フォームの\n一時データか？"}
     J -->|YES| K["Form state\nuseActionState"]
 
-    J -->|NO| L{"他のコンポーネントが\nこの値を使用するか？"}
-    L -->|YES| M["UI state（共有）\nZustand などストア\n※ 監視コンポーネントのみ再レンダリング"]
-    L -->|NO| N["UI state（ローカル）\nuseState で\nそのコンポーネント内に持つ"]
+    J -->|NO| L{"他のコンポーネントが\nこの値を使うか？"}
+    L -->|YES| M["UI state（共有）\nZustand などストア"]
+    L -->|NO| N["UI state（ローカル）\nuseState でローカル管理"]
 ```
 
 **判定のコツ：** 上から順に YES か NO を辿るだけです。「YES の経路をできるだけ早く決断する」ことが設計の速度を上げます。

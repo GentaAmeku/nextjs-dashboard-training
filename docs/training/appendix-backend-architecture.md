@@ -103,9 +103,9 @@ export function DeleteButton({ id }: { id: number }) {
 ```mermaid
 flowchart TD
     Browser["ブラウザ"]
-    SA["Server Action\napp/(authed)/tasks/actions/tasks.ts\n・FormData をオブジェクトに変換\n・キャッシュ無効化 updateTag\n・redirect"]
-    SVC["Service 層\nlib/db/services/task-service.ts\n・Zod バリデーション\n・ビジネスロジック（存在チェックなど）\n・Result&lt;T&gt; を返す"]
-    Repo["Repository 層\nlib/db/repositories/task-repository.ts\n・Drizzle ORM で DB を操作\n・try/catch で Result&lt;T&gt; に変換"]
+    SA["Server Action\n・FormData をオブジェクトに変換\n・updateTag でキャッシュ無効化\n・redirect"]
+    SVC["Service 層\n・Zod バリデーション\n・ビジネスロジック\n・Result&lt;T&gt; を返す"]
+    Repo["Repository 層\n・Drizzle ORM で DB を操作\n・Result&lt;T&gt; に変換"]
     DB[("DB\nSQLite / local.db")]
 
     Browser -->|"FormData または関数呼び出し"| SA
