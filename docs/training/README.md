@@ -25,26 +25,32 @@
 
 ## 章構成・所要時間
 
-| #    | 章タイトル                         | 到達点                                                          | タグ        | 時間    |
-| ---- | ---------------------------------- | --------------------------------------------------------------- | ----------- | ------- |
-| [00](./00-orientation.md) | はじめに / 完成形ツアー   | 完成版を動かし、画面・URL・データの対応をイメージできる         | —           | 30 分   |
-| [01](./01-foundation.md)  | プロジェクト基盤の仕組み  | 空ディレクトリから `pnpm dev` で空ページ描画。RSC・Biome・Lefthook を口頭で説明可 | — | 90 分   |
-| [02](./02-tailwind-shadcn.md) | Tailwind v4 + shadcn/ui | `globals.css` の `@theme` を理解し、shadcn コンポーネントを表示 | —           | 60 分   |
-| [03](./03-routing.md)     | App Router・layout・ルート | `/login`・`/`・`/tasks` の遷移と共通レイアウトが見える          | —           | 60 分   |
-| [04](./04-drizzle-sqlite.md) | Drizzle + SQLite        | `tasks` テーブルを定義し Drizzle Studio で確認できる            | **必須**    | 60 分   |
-| [05](./05-server-actions.md) | Server Actions + フォーム | `/tasks/create` で送信すると SQLite に行が増える               | —           | 120 分  |
-| [06](./06-better-auth.md) | Better Auth + Google OAuth | Google ログイン→ログアウトと二段認証ガードが機能する           | —           | 120 分  |
-| [07](./07-cache-components.md) | Cache Components      | タスク作成後に一覧・統計が即更新される                          | —           | 75 分   |
-| [08](./08-nuqs-zustand.md) | nuqs + Zustand          | フィルタが URL に反映、削除ダイアログが Zustand で開閉する       | —           | 75 分   |
-| [09](./09-finishing.md)   | 仕上げ：Dashboard + デプロイ準備 | ダッシュボード統計が表示され `pnpm start` で本番起動できる | —           | 60 分   |
-| [10](./10-theme.md)       | テーマを導入してみよう    | ライト/ダーク切り替えが動き、オリジナルのカラーテーマを自分で追加できる | —     | 60 分   |
-| [11](./11-result-repository.md) | Result 型 / Repository 層 | `taskRepository` の中身を理解する                          | **より深く** | 90 分   |
-| [12](./12-zod-service.md) | Zod + Service 層         | `taskService` の中身を理解する                                  | **より深く** | 60 分   |
-| [13](./13-vitest-biome.md) | Vitest でテストを書く    | 全テストが緑になる                                              | **より深く** | 60 分   |
-| [14](./14-react-compiler.md) | React Compiler + Turbopack | `useMemo` を書かない設計の理由を説明できる（読み物中心）    | **より深く** | 30 分   |
+| #    | 章タイトル                         | 到達点                                                          | 実装種別             | タグ        | 時間    |
+| ---- | ---------------------------------- | --------------------------------------------------------------- | -------------------- | ----------- | ------- |
+| [00](./00-orientation.md) | はじめに / 完成形ツアー   | 完成版を動かし、画面・URL・データの対応をイメージできる         | 体験                 | —           | 30 分   |
+| [01](./01-foundation.md)  | プロジェクト基盤の仕組み  | 空ディレクトリから `pnpm dev` で空ページ描画。RSC・Biome・Lefthook を口頭で説明可 | フロントエンド | —           | 90 分   |
+| [02](./02-tailwind-shadcn.md) | Tailwind v4 + shadcn/ui | `globals.css` の `@theme` を理解し、shadcn コンポーネントを表示 | フロントエンド  | —           | 60 分   |
+| [03](./03-routing.md)     | App Router・layout・ルート | `/login`・`/`・`/tasks` の遷移と共通レイアウトが見える          | フロントエンド       | —           | 60 分   |
+| [04](./04-drizzle-sqlite.md) | Drizzle + SQLite        | `tasks` テーブルを定義し Drizzle Studio で確認できる            | バックエンド         | **必須**    | 60 分   |
+| [05](./05-server-actions.md) | Server Actions + フォーム | `/tasks/create` で送信すると SQLite に行が増える               | フロントエンド       | —           | 120 分  |
+| [06](./06-better-auth.md) | Better Auth + Google OAuth | Google ログイン→ログアウトと二段認証ガードが機能する           | フロントエンド       | —           | 120 分  |
+| [07](./07-cache-components.md) | Cache Components      | タスク作成後に一覧・統計が即更新される                          | フロントエンド       | —           | 75 分   |
+| [08](./08-nuqs-zustand.md) | nuqs + Zustand          | フィルタが URL に反映、削除ダイアログが Zustand で開閉する       | フロントエンド       | —           | 75 分   |
+| [09](./09-finishing.md)   | 仕上げ：Dashboard + デプロイ準備 | ダッシュボード統計が表示され `pnpm start` で本番起動できる | フロントエンド  | —           | 60 分   |
+| [10](./10-theme.md)       | テーマを導入してみよう    | ライト/ダーク切り替えが動き、オリジナルのカラーテーマを自分で追加できる | フロントエンド | —     | 60 分   |
+| [11](./11-result-repository.md) | Result 型 / Repository 層 | `taskRepository` の中身を理解する                          | バックエンド         | **より深く** | 90 分   |
+| [12](./12-zod-service.md) | Zod + Service 層         | `taskService` の中身を理解する                                  | バックエンド         | **より深く** | 60 分   |
+| [13](./13-vitest-biome.md) | Vitest でテストを書く    | 全テストが緑になる                                              | バックエンド         | **より深く** | 60 分   |
+| [14](./14-react-compiler.md) | React Compiler + Turbopack | `useMemo` を書かない設計の理由を説明できる（読み物中心）    | 読み物               | **より深く** | 30 分   |
 
 **合計 約 17〜21 時間（研修 2〜3 日想定）**
 
+> **実装種別の意味**
+> - **フロントエンド**: `app/` 配下（ページ・コンポーネント・Server Actions）を中心に実装する章
+> - **バックエンド**: `lib/` 配下（DB スキーマ・Repository・Service・認証）を中心に実装する章
+> - **体験**: コードを書かず完成版を動かして全体像を把握する章
+> - **読み物**: 実装はなく概念・設計を理解する章
+>
 > **タグの意味**
 > - **必須**: DB 環境セットアップのため全員が実施する章。コピーで素早く進めても OK。
 > - **より深く**: `lib/` の中身を読み解くオプション章。第 10 章まで完了してから取り組むと理解が深まります。

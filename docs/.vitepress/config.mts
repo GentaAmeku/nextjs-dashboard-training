@@ -28,55 +28,55 @@ export default defineConfig({
               link: "/training/00-orientation",
             },
             {
-              text: "第 01 章：プロジェクト基盤の仕組み",
+              text: "第 01 章：プロジェクト基盤の仕組み [FE]",
               link: "/training/01-foundation",
             },
             {
-              text: "第 02 章：Tailwind v4 + shadcn/ui",
+              text: "第 02 章：Tailwind v4 + shadcn/ui [FE]",
               link: "/training/02-tailwind-shadcn",
             },
             {
-              text: "第 03 章：App Router・layout・ルートグループ",
+              text: "第 03 章：App Router・layout・ルートグループ [FE]",
               link: "/training/03-routing",
             },
             {
-              text: "第 04 章：Drizzle + SQLite [必須]",
+              text: "第 04 章：Drizzle + SQLite [BE・必須]",
               link: "/training/04-drizzle-sqlite",
             },
             {
-              text: "第 05 章：Server Actions + フォーム",
+              text: "第 05 章：Server Actions + フォーム [FE]",
               link: "/training/05-server-actions",
             },
             {
-              text: "第 06 章：Better Auth + Google OAuth",
+              text: "第 06 章：Better Auth + Google OAuth [FE]",
               link: "/training/06-better-auth",
             },
             {
-              text: "第 07 章：Cache Components",
+              text: "第 07 章：Cache Components [FE]",
               link: "/training/07-cache-components",
             },
             {
-              text: "第 08 章：nuqs + Zustand",
+              text: "第 08 章：nuqs + Zustand [FE]",
               link: "/training/08-nuqs-zustand",
             },
             {
-              text: "第 09 章：仕上げ：Dashboard + デプロイ準備",
+              text: "第 09 章：仕上げ：Dashboard + デプロイ準備 [FE]",
               link: "/training/09-finishing",
             },
             {
-              text: "第 10 章：テーマを導入してみよう",
+              text: "第 10 章：テーマを導入してみよう [FE]",
               link: "/training/10-theme",
             },
             {
-              text: "第 11 章：Result 型 / Repository 層 [より深く]",
+              text: "第 11 章：Result 型 / Repository 層 [BE・より深く]",
               link: "/training/11-result-repository",
             },
             {
-              text: "第 12 章：Zod + Service 層 [より深く]",
+              text: "第 12 章：Zod + Service 層 [BE・より深く]",
               link: "/training/12-zod-service",
             },
             {
-              text: "第 13 章：Vitest でテストを書く [より深く]",
+              text: "第 13 章：Vitest でテストを書く [BE・より深く]",
               link: "/training/13-vitest-biome",
             },
             {
