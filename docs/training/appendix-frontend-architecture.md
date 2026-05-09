@@ -154,18 +154,14 @@ const filteredTasks = tasks.filter(t => t.status === status);
 
 Derived state の別の解決策として、**BFF 層（Server Action や RSC）でサーバー側に変換ロジックを閉じ込める**方法があります。
 
-```
-DB から取得した生データ
-    │
-    ▼  Server Action / RSC の中で変換（BFF 層）
-    │  ・ステータスの日本語ラベルに変換
-    │  ・日時をフォーマット
-    │  ・集計値を計算
-    ▼
-UI 専用の ViewModel として Client に渡す
-    │
-    ▼
-コンポーネントは受け取ったデータを表示するだけ
+```mermaid
+flowchart TD
+    Raw["DB から取得した生データ"]
+    BFF["Server Action / RSC の中で変換（BFF 層）\n・ステータスの日本語ラベルに変換\n・日時をフォーマット\n・集計値を計算"]
+    ViewModel["UI 専用の ViewModel として\nClient に渡す"]
+    Component["コンポーネントは受け取ったデータを\n表示するだけ"]
+
+    Raw --> BFF --> ViewModel --> Component
 ```
 
 ```typescript
@@ -223,22 +219,30 @@ function toTaskViewModel(task: Task): TaskViewModel {
 
 **考える順序：**
 
-```
-1. このコンポーネント単独で持てないか？
-   └── YES → useState / useReducer でローカルに持つ（最もシンプル）
+```mermaid
+flowchart TD
+    Start["状態をどこに置くか？"]
+    Q1{"このコンポーネント\n単独で持てるか？"}
+    Q2{"URL に入れられるか？"}
+    Q3{"他のコンポーネントが\nこの値を使うか？"}
+    Q4{"計算で\n導けるか？"}
+    Local["useState / useReducer\nでローカルに持つ\n（最もシンプル）"]
+    URL["nuqs\n（共有・ブックマーク対応）"]
+    Store["Zustand / Jotai\n（監視コンポーネントのみ\n再レンダリング）"]
+    LocalState["useState で\nそのコンポーネント内に持つ"]
+    Derived["Derived state\nレンダリング中に計算"]
+    Lift["親に持つ\n（最終手段）\n再レンダリング範囲が広がる"]
 
-2. URL に入れられないか？
-   └── YES → nuqs。親を汚染せず、共有・ブックマーク対応も自動
-
-3. 他のコンポーネントがこの値を使うか？
-   └── YES → Zustand（または Jotai）。監視するコンポーネントだけが再レンダリング
-   └── NO  → useState でそのコンポーネント内に持つ（最もシンプル）
-
-4. 計算で導けるか？
-   └── YES → Derived state としてレンダリング中に計算
-
-5. それでも必要なら、親に持つ（最終手段）
-   └── 再レンダリング範囲が広がることを意識する
+    Start --> Q1
+    Q1 -->|"YES"| Local
+    Q1 -->|"NO"| Q2
+    Q2 -->|"YES"| URL
+    Q2 -->|"NO"| Q3
+    Q3 -->|"YES"| Store
+    Q3 -->|"NO"| LocalState
+    LocalState --> Q4
+    Q4 -->|"YES"| Derived
+    Q4 -->|"NO"| Lift
 ```
 
 > TIP
@@ -302,18 +306,16 @@ export default async function TasksPage() {
 
 「何からコードを書き始めるか」によって、後から修正が必要になる量が大きく変わります。以下の 6 ステップを意識すると、書き直しが最小になります。
 
-```
-Step 1  URL を設計する
-  ↓
-Step 2  page.tsx の境界を決める（RSC / Client）
-  ↓
-Step 3  データ取得を Suspense 単位で切る
-  ↓
-Step 4  UI をコンポーネントに分割する（責務）
-  ↓
-Step 5  必要な状態だけ追加する
-  ↓
-Step 6  アクション（Server Action）をつなぐ
+```mermaid
+flowchart LR
+    S1["Step 1\nURL を設計する"]
+    S2["Step 2\npage.tsx の境界を決める\n（RSC / Client）"]
+    S3["Step 3\nデータ取得を\nSuspense 単位で切る"]
+    S4["Step 4\nUI をコンポーネントに\n分割する（責務）"]
+    S5["Step 5\n必要な状態だけ\n追加する"]
+    S6["Step 6\nアクション\n（Server Action）\nをつなぐ"]
+
+    S1 --> S2 --> S3 --> S4 --> S5 --> S6
 ```
 
 ---
@@ -752,21 +754,26 @@ updateTag(CACHE_TAGS.TASKS)
    └── 次のリクエストで DB から再フェッチされる
 ```
 
-```
-[タスク一覧取得]                       [タスク作成]
-      │                                     │
-      ▼                                     │
-  getTasks() を呼ぶ                         │
-      │                                     │
-  キャッシュヒット？ ─ YES → キャッシュを返す │
-      │ NO                                  │
-      ▼                                     ▼
-  DB から取得                         createTask() を実行
-  cacheTag("tasks") でタグ付け              │
-  キャッシュに保存                    updateTag("tasks")
-  結果を返す                                │
-                                       "tasks" キャッシュが無効化
-                                       次のリクエストで DB から再取得
+```mermaid
+flowchart LR
+    subgraph Read["タスク一覧取得"]
+        getTasks["getTasks() を呼ぶ"]
+        Hit{"キャッシュ\nヒット？"}
+        ReturnCache["キャッシュを返す"]
+        FetchDB["DB から取得\ncacheTag でタグ付け・保存"]
+        getTasks --> Hit
+        Hit -->|"YES"| ReturnCache
+        Hit -->|"NO"| FetchDB --> ReturnCache
+    end
+
+    subgraph Write["タスク作成"]
+        createTask["createTask() を実行"]
+        UpdateTag["updateTag('tasks')\nキャッシュを無効化"]
+        NextFetch["次のリクエストで\nDB から再取得"]
+        createTask --> UpdateTag --> NextFetch
+    end
+
+    NextFetch -.->|"次回の getTasks が NO になる"| Hit
 ```
 
 **キャッシュタグの管理場所：**

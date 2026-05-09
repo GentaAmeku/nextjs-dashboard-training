@@ -28,21 +28,19 @@
 
 認証は二段構えになっています。
 
-```
-[ブラウザ] http://localhost:3000/tasks にアクセス
-     ↓
-[proxy.ts]（Edge Runtime）
-     Cookie を確認
-     ├─ Cookie なし → /login にリダイレクト（終了）
-     └─ Cookie あり → 次へ進む
-     ↓
-[app/(authed)/layout.tsx の AuthGate]（Node.js / RSC）
-     DB でセッションを確認
-     ├─ セッション失効 → /login にリダイレクト（終了）
-     └─ セッション有効 → ページを表示
-     ↓
-[app/(authed)/tasks/page.tsx]
-     タスク一覧を表示
+```mermaid
+flowchart TD
+    Browser["ブラウザ\nhttp://localhost:3000/tasks にアクセス"]
+    Proxy["proxy.ts（Edge Runtime）\nCookie を確認"]
+    AuthGate["app/(authed)/layout.tsx の AuthGate\n（Node.js / RSC）\nDB でセッションを確認"]
+    Page["app/(authed)/tasks/page.tsx\nタスク一覧を表示"]
+    Login["/login にリダイレクト（終了）"]
+
+    Browser --> Proxy
+    Proxy -->|"Cookie なし"| Login
+    Proxy -->|"Cookie あり"| AuthGate
+    AuthGate -->|"セッション失効"| Login
+    AuthGate -->|"セッション有効"| Page
 ```
 
 **なぜ二段構えか？**

@@ -68,16 +68,15 @@ ls .next/
 # *-manifest.json  ← ルート情報などのメタデータ
 ```
 
-```
-[ブラウザ] ──HTTP リクエスト──> [Next.js サーバー (Node.js)]
-                                        ↓
-                              .next/server/app/ の中のコードを実行
-                                        ↓
-                              HTML + RSC ペイロードを生成
-                                        ↓
-[ブラウザ] <──HTML + JavaScript── [Next.js サーバー]
-     ↓
-.next/static/ の JS でインタラクションを追加（ハイドレーション）
+```mermaid
+sequenceDiagram
+    participant B as ブラウザ
+    participant S as Next.js サーバー（Node.js）
+
+    B->>S: HTTP リクエスト
+    Note over S: .next/server/app/ のコードを実行<br/>HTML + RSC ペイロードを生成
+    S-->>B: HTML + JavaScript
+    Note over B: .next/static/ の JS でハイドレーション<br/>インタラクションを追加
 ```
 
 > NOTE
@@ -154,28 +153,22 @@ Client Component（'use client' を書く）
 
 ### 概念図
 
-```
-┌─────────────────────────────────────┐
-│           サーバー（Node.js）        │
-│                                     │
-│  Server Component  ──────┐          │
-│  （DB アクセス可）        │          │
-│                          ↓          │
-│                     RSC ペイロード  │
-└──────────────────────────│──────────┘
-                           │ ネットワーク
-                           ↓
-┌─────────────────────────────────────┐
-│           ブラウザ                   │
-│                                     │
-│  RSC ペイロードを受け取る            │
-│         ↓                           │
-│  HTML を描画する                     │
-│         ↓                           │
-│  Client Component の JavaScript を  │
-│  実行してインタラクションを追加      │
-│  （ハイドレーション）                │
-└─────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Server["サーバー（Node.js）"]
+        SC["Server Component\n（DB アクセス可）"]
+        Payload["RSC ペイロードを生成"]
+        SC --> Payload
+    end
+
+    subgraph Browser["ブラウザ"]
+        Recv["RSC ペイロードを受け取る"]
+        HTML["HTML を描画する"]
+        Hydrate["Client Component の JS を実行\n（ハイドレーション）"]
+        Recv --> HTML --> Hydrate
+    end
+
+    Payload -->|"ネットワーク"| Recv
 ```
 
 ### 判断の基準
@@ -221,22 +214,19 @@ export default function SearchInput() {
 
 ### Next.js の「リクエストの旅」
 
-```
-[ブラウザ]
-    ↓ http://localhost:3000/tasks にアクセス
-    ↓
-[proxy.ts]（Edge Runtime）
-    Cookie を確認
-    ├─ Cookie なし → /login にリダイレクト
-    └─ Cookie あり → 次へ
-    ↓
-[app/(authed)/layout.tsx の AuthGate]（Node.js / RSC）
-    DB でセッションを確認
-    ├─ セッション失効 → /login にリダイレクト
-    └─ セッション有効 → ページを表示
-    ↓
-[app/(authed)/tasks/page.tsx]
-    タスク一覧を表示
+```mermaid
+flowchart TD
+    Browser["ブラウザ\nhttp://localhost:3000/tasks にアクセス"]
+    Proxy["proxy.ts（Edge Runtime）\nCookie を確認"]
+    AuthGate["app/(authed)/layout.tsx の AuthGate\n（Node.js / RSC）\nDB でセッションを確認"]
+    Page["app/(authed)/tasks/page.tsx\nタスク一覧を表示"]
+    Login["/login にリダイレクト"]
+
+    Browser --> Proxy
+    Proxy -->|"Cookie なし"| Login
+    Proxy -->|"Cookie あり"| AuthGate
+    AuthGate -->|"セッション失効"| Login
+    AuthGate -->|"セッション有効"| Page
 ```
 
 ### なぜ二段構えなのか？

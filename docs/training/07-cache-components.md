@@ -28,17 +28,20 @@ Next.js は高速化のためにレスポンスをキャッシュします。し
 
 このプロジェクトでは **Cache Components**（`"use cache"` ディレクティブ）を使って、**キャッシュの対象と更新のタイミングを明示的に制御**します。
 
-```
-┌─────────────────────────────────────┐
-│          "use cache" 関数           │
-│                                     │
-│  最初の呼び出し: DB からデータ取得  │
-│  次回以降: キャッシュから返す       │
-│                                     │
-│  updateTag("tasks") を呼ぶと:       │
-│  そのタグのキャッシュが無効化される │
-│  → 次回は DB から再取得             │
-└─────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Call["関数を呼び出す\n（'use cache' 付き）"]
+    Hit{"キャッシュが\n有効？"}
+    ReturnCache["キャッシュから返す\n（DB アクセスなし・高速）"]
+    FetchDB["DB からデータを取得"]
+    SaveCache["キャッシュに保存\n（cacheTag でタグ付け）"]
+    Invalidate["updateTag('tasks') を呼ぶ\nそのタグのキャッシュが無効化される"]
+
+    Call --> Hit
+    Hit -->|"YES（キャッシュあり）"| ReturnCache
+    Hit -->|"NO（初回 or 無効化後）"| FetchDB
+    FetchDB --> SaveCache --> ReturnCache
+    Invalidate -.->|"次の呼び出しが NO になる"| Hit
 ```
 
 ---

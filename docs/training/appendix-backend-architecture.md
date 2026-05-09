@@ -10,25 +10,23 @@
 
 このプロジェクトでは **Next.js サーバーの中にバックエンド処理が同居** しています。
 
-```
-┌──────────────────────────────────────────────────────┐
-│                   Next.js サーバー                    │
-│                                                      │
-│  ┌─────────────────────┐   ┌──────────────────────┐  │
-│  │   フロントエンド層   │   │  バックエンド層       │  │
-│  │   (app/ 配下)       │   │  (lib/ 配下)          │  │
-│  │                     │   │                      │  │
-│  │ ・ページコンポーネント │   │ ・DB 接続 (Drizzle)  │  │
-│  │ ・Server Actions    │←→│ ・Repository 層       │  │
-│  │ ・認証レイアウト     │   │ ・Service 層          │  │
-│  └─────────────────────┘   └──────────────────────┘  │
-│                                          │            │
-└──────────────────────────────────────────┼────────────┘
-                                           │
-                                    ┌──────▼──────┐
-                                    │  SQLite DB   │
-                                    │  (local.db)  │
-                                    └─────────────┘
+```mermaid
+flowchart TD
+    subgraph Nextjs["Next.js サーバー（同一 Node.js プロセス）"]
+        subgraph FE["フロントエンド層（app/ 配下）"]
+            Pages["ページコンポーネント"]
+            Actions["Server Actions"]
+            AuthLayout["認証レイアウト"]
+        end
+        subgraph BE["バックエンド層（lib/ 配下）"]
+            Service["Service 層"]
+            Repo["Repository 層"]
+            DBConn["DB 接続（Drizzle）"]
+        end
+        FE <-->|"同一プロセス内で呼び出し"| BE
+    end
+    DB[("SQLite DB\n(local.db)")]
+    DBConn --> DB
 ```
 
 **`app/` はフロントエンド層**、**`lib/` はバックエンド層** という役割分担ですが、両方とも同じ Node.js プロセスの中で動きます。別途 API サーバーを立てる必要はありません。
@@ -60,23 +58,16 @@ export async function createTask(
 
 クライアントコンポーネントから `createTask` を呼ぶと、表面上は「関数呼び出し」ですが、裏側では **HTTP POST リクエスト** が送信されています。
 
-```
-[クライアント]                          [サーバー]
-    │                                      │
-    │  useActionState(createTask, null)     │
-    │                                      │
-    │  <form action={formAction}>          │
-    │  → フォーム送信                      │
-    │                                      │
-    │──── POST /_next/action ─────────────→│
-    │     Content-Type: multipart/form-data │
-    │     FormData: { name: "...", ... }    │
-    │                                      │
-    │                         createTask() │
-    │                         を実行        │
-    │                                      │
-    │←─── RSC ペイロード ─────────────────│
-    │     (更新後の画面差分データ)          │
+```mermaid
+sequenceDiagram
+    participant C as クライアント
+    participant S as サーバー
+
+    Note over C: useActionState(createTask, null)
+    Note over C: &lt;form action={formAction}&gt; → フォーム送信
+    C->>S: POST /_next/action<br/>FormData: { name: "...", ... }
+    Note over S: createTask() を実行
+    S-->>C: RSC ペイロード<br/>（更新後の画面差分データ）
 ```
 
 これが **RPC（Remote Procedure Call）** の仕組みです。「離れた場所にある手続きを、あたかもローカルの関数のように呼び出す」パターンをそのままコードで表現できます。
@@ -109,26 +100,18 @@ export function DeleteButton({ id }: { id: number }) {
 
 データがどのように流れるかを追ってみましょう。
 
-```
-ブラウザ
-  │
-  │ FormData（フォーム送信）または 関数呼び出し
-  ▼
-Server Action                  ← app/(authed)/tasks/actions/tasks.ts
-  │ ・FormData → オブジェクトに変換
-  │ ・キャッシュ無効化 (updateTag)
-  │ ・redirect
-  ▼
-Service 層                     ← lib/db/services/task-service.ts
-  │ ・Zod バリデーション
-  │ ・ビジネスロジック（存在チェックなど）
-  │ ・Result<T> を返す
-  ▼
-Repository 層                  ← lib/db/repositories/task-repository.ts
-  │ ・Drizzle ORM で DB を操作
-  │ ・try/catch で Result<T> に変換
-  ▼
-DB（SQLite / local.db）
+```mermaid
+flowchart TD
+    Browser["ブラウザ"]
+    SA["Server Action\napp/(authed)/tasks/actions/tasks.ts\n・FormData をオブジェクトに変換\n・キャッシュ無効化 updateTag\n・redirect"]
+    SVC["Service 層\nlib/db/services/task-service.ts\n・Zod バリデーション\n・ビジネスロジック（存在チェックなど）\n・Result&lt;T&gt; を返す"]
+    Repo["Repository 層\nlib/db/repositories/task-repository.ts\n・Drizzle ORM で DB を操作\n・try/catch で Result&lt;T&gt; に変換"]
+    DB[("DB\nSQLite / local.db")]
+
+    Browser -->|"FormData または関数呼び出し"| SA
+    SA --> SVC
+    SVC --> Repo
+    Repo --> DB
 ```
 
 ### A-3-1. Server Action の責務
