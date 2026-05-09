@@ -92,6 +92,10 @@ export default defineConfig({
               text: "Server Actions アーキテクチャと REST API との違い",
               link: "/training/appendix-backend-architecture",
             },
+            {
+              text: "ページ実装の設計思想（フロントエンド・アーキテクチャ）",
+              link: "/training/appendix-frontend-architecture",
+            },
           ],
         },
       ],
