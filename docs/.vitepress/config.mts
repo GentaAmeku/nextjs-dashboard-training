@@ -85,6 +85,15 @@ export default defineConfig({
             },
           ],
         },
+        {
+          text: "補足・参考",
+          items: [
+            {
+              text: "Server Actions アーキテクチャと REST API との違い",
+              link: "/training/appendix-backend-architecture",
+            },
+          ],
+        },
       ],
     },
 

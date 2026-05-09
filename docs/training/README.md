@@ -160,6 +160,16 @@ git commit -m "ch05: Server Actions でタスク CRUD を実装"
 
 ---
 
+## 補足ドキュメント
+
+章の手順書とは別に、設計の背景を解説する読み物ドキュメントです。
+
+| ドキュメント | 内容 |
+| ------------ | ---- |
+| [Server Actions アーキテクチャと REST API との違い](./appendix-backend-architecture.md) | このプロジェクトのバックエンド設計・RPC の仕組み・REST API との比較 |
+
+---
+
 ## 参考リンク
 
 - [このリポジトリの README](https://github.com/GentaAmeku/nextjs-dashboard-training/blob/main/README.md)
