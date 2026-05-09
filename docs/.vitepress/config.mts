@@ -1,6 +1,7 @@
 import { defineConfig } from "vitepress";
+import { withMermaid } from "vitepress-plugin-mermaid";
 
-export default defineConfig({
+export default withMermaid(defineConfig({
   title: "Next.js Dashboard Training",
   description: "フロントエンドエンジニア向け Next.js ハンズオン研修教材",
   lang: "ja",
@@ -160,4 +161,4 @@ export default defineConfig({
       },
     ],
   },
-});
+}));

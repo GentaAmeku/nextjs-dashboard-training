@@ -55,36 +55,27 @@
 
 「この値をどこに置くか」を決めるときは、以下のフローに沿って考えます。
 
-```
-このデータはどこに置くか？
-           │
-           ▼
-  DB や API から取得するデータか？
-       │              │
-      YES             NO
-       │              │
-       ▼              ▼
-  Server state    ユーザー操作で変わる値か？
- (RSC でフェッチ、        │              │
-  "use cache" で        YES              NO
-  キャッシュ管理)          │              │
-                         ▼              ▼
-               共有・ブックマーク   既存の state/props
-               したいか？          から計算できるか？
-                 │     │               │         │
-                YES    NO             YES         NO
-                 │     │               │         │
-                 ▼     ▼               ▼         │
-             URL state  フォームの        Derived state    │
-           (nuqs)      一時データか？   (レンダリング中に    │
-                          │     │      計算する)         │
-                         YES    NO                       │
-                          │     │              ← ここには
-                          ▼     ▼                ほぼ来ない
-                      Form state  UI state
-                    (useActionState)  (Zustand など
-                                     クライアント
-                                     ストア)
+```mermaid
+flowchart TD
+    A["この値はどこに置くか？"] --> B{"DB や API から\n取得するデータか？"}
+
+    B -->|YES| C["Server state\nRSC でフェッチ\n'use cache' でキャッシュ管理\n※ BFF層で表示用に整形可"]
+
+    B -->|NO| D{"ユーザー操作で\n変わる値か？"}
+
+    D -->|NO| E{"既存の state/props\nから計算できるか？"}
+    E -->|YES| F["Derived state\nレンダリング中に計算\nまたは BFF 層で整形して渡す"]
+    E -->|NO| G["⚠️ ここには\nほぼ来ない"]
+
+    D -->|YES| H{"共有・ブックマーク\nしたいか？"}
+    H -->|YES| I["URL state\nnuqs"]
+
+    H -->|NO| J{"フォームの\n一時データか？"}
+    J -->|YES| K["Form state\nuseActionState"]
+
+    J -->|NO| L{"他のコンポーネントが\nこの値を使用するか？"}
+    L -->|YES| M["UI state（共有）\nZustand などストア\n※ 監視コンポーネントのみ再レンダリング"]
+    L -->|NO| N["UI state（ローカル）\nuseState で\nそのコンポーネント内に持つ"]
 ```
 
 **判定のコツ：** 上から順に YES か NO を辿るだけです。「YES の経路をできるだけ早く決断する」ことが設計の速度を上げます。
@@ -98,8 +89,9 @@
 | **Server state** | RSC の `async` 関数 + `"use cache"` / `cacheTag` | 第 07 章 |
 | **URL state** | `nuqs` の `useQueryStates` / `searchParamsCache` | 第 08 章 |
 | **Form state** | `useActionState` + Server Action | 第 05 章 |
-| **UI state** | `zustand` の `useTaskStore` | 第 08 章 |
-| **Derived state** | レンダリング中に直接計算（`useState` を使わない） | — |
+| **UI state（共有）** | `zustand` の `useTaskStore` | 第 08 章 |
+| **UI state（ローカル）** | `useState` でコンポーネント内に持つ | — |
+| **Derived state** | レンダリング中に直接計算（`useState` を使わない）または BFF 層で整形 | — |
 
 #### Server state の例
 
@@ -158,6 +150,69 @@ const filteredTasks = tasks.filter(t => t.status === status);
 
 `useEffect` を使うと「tasks が変わる → useEffect が走る → state が更新される → 再レンダリング」という 2 回のレンダリングが発生します。計算で済む値は **レンダリング中に 1 回で処理します**。
 
+#### BFF 層での整形（サーバー側で表示用データを作る）
+
+Derived state の別の解決策として、**BFF 層（Server Action や RSC）でサーバー側に変換ロジックを閉じ込める**方法があります。
+
+```
+DB から取得した生データ
+    │
+    ▼  Server Action / RSC の中で変換（BFF 層）
+    │  ・ステータスの日本語ラベルに変換
+    │  ・日時をフォーマット
+    │  ・集計値を計算
+    ▼
+UI 専用の ViewModel として Client に渡す
+    │
+    ▼
+コンポーネントは受け取ったデータを表示するだけ
+```
+
+```typescript
+// app/(authed)/tasks/actions/tasks.ts
+
+// UI 専用の型（DB の Task 型ではなく、表示に特化した型）
+type TaskViewModel = {
+  id: number;
+  name: string;
+  statusLabel: string;   // "in_progress" → "進行中"
+  priorityLabel: string; // "high" → "高"
+  formattedDate: string; // "2026-05-09"
+  isOverdue: boolean;    // 期限切れかどうか（計算済み）
+};
+
+// BFF 層で変換してから返す
+export async function getTasks(filters: TaskFilters): Promise<Result<TaskViewModel[]>> {
+  const result = await taskService.getTasks(filters);
+  if (isErr(result)) return result;
+
+  return ok(result.value.map(toTaskViewModel));
+}
+
+function toTaskViewModel(task: Task): TaskViewModel {
+  return {
+    id: task.id,
+    name: task.name,
+    statusLabel: STATUS_LABELS[task.status],
+    priorityLabel: PRIORITY_LABELS[task.priority],
+    formattedDate: formatDate(task.createdAt),
+    isOverdue: task.dueDate ? new Date(task.dueDate) < new Date() : false,
+  };
+}
+```
+
+この設計のメリット：
+
+| メリット | 説明 |
+|---|---|
+| **コンポーネントが表示専用になる** | `task.statusLabel` を表示するだけ。変換ロジックを持たない |
+| **ロジックがサーバーに閉じる** | ラベルマッピングや集計ルールがクライアントバンドルに入らない |
+| **props の型が明確になる** | ViewModel 型が UI の要件を直接表現する |
+| **単体テストが書きやすい** | `toTaskViewModel` は純粋関数なのでテストしやすい |
+
+> TIP
+> 「クライアントで計算できるが、サーバー側で整形した方がコードが綺麗になる」という場合は積極的に BFF 層で処理します。特に、**同じ変換を複数のコンポーネントで行っている**と気づいたら、Server Action に集約するサインです。
+
 ---
 
 ### B-2-4. 「親に持ち上げる」前に考える順序
@@ -175,8 +230,9 @@ const filteredTasks = tasks.filter(t => t.status === status);
 2. URL に入れられないか？
    └── YES → nuqs。親を汚染せず、共有・ブックマーク対応も自動
 
-3. 別のコンポーネントが「監視だけ」すればよいか？
+3. 他のコンポーネントがこの値を使うか？
    └── YES → Zustand（または Jotai）。監視するコンポーネントだけが再レンダリング
+   └── NO  → useState でそのコンポーネント内に持つ（最もシンプル）
 
 4. 計算で導けるか？
    └── YES → Derived state としてレンダリング中に計算
