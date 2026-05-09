@@ -167,6 +167,7 @@ git commit -m "ch05: Server Actions でタスク CRUD を実装"
 | ドキュメント | 内容 |
 | ------------ | ---- |
 | [Server Actions アーキテクチャと REST API との違い](./appendix-backend-architecture.md) | このプロジェクトのバックエンド設計・RPC の仕組み・REST API との比較 |
+| [ページ実装の設計思想（フロントエンド・アーキテクチャ）](./appendix-frontend-architecture.md) | 状態の置き場所・コンポーネントの責務・書き始めの手順・hook 分離・キャッシュ戦略 |
 
 ---
 
