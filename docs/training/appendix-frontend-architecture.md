@@ -59,12 +59,12 @@
 flowchart TD
     A["この値はどこに置くか？"] --> B{"DB や API から\n取得するデータか？"}
 
-    B -->|YES| C["Server state\nRSC でフェッチ\ncacheTag でキャッシュ管理"]
+    B -->|YES| C["Server state\nRSC + cacheTag 管理"]
 
     B -->|NO| D{"ユーザー操作で\n変わる値か？"}
 
     D -->|NO| E{"既存の state/props\nから計算できるか？"}
-    E -->|YES| F["Derived state\nレンダリング中に計算\nor BFF 層で整形"]
+    E -->|YES| F["Derived state\n計算 or BFF 整形"]
     E -->|NO| G["⚠️ ここには\nほぼ来ない"]
 
     D -->|YES| H{"共有・ブックマーク\nしたいか？"}
@@ -157,9 +157,9 @@ Derived state の別の解決策として、**BFF 層（Server Action や RSC）
 ```mermaid
 flowchart TD
     Raw["DB から取得した生データ"]
-    BFF["Server Action / RSC の中で変換（BFF 層）\n・ステータスの日本語ラベルに変換\n・日時をフォーマット\n・集計値を計算"]
-    ViewModel["UI 専用の ViewModel として\nClient に渡す"]
-    Component["コンポーネントは受け取ったデータを\n表示するだけ"]
+    BFF["BFF 層で変換\nラベル・日時・集計を整形"]
+    ViewModel["UI 専用 ViewModel\nとして渡す"]
+    Component["コンポーネントは\n表示するだけ"]
 
     Raw --> BFF --> ViewModel --> Component
 ```
@@ -309,11 +309,11 @@ export default async function TasksPage() {
 ```mermaid
 flowchart LR
     S1["Step 1\nURL を設計する"]
-    S2["Step 2\npage.tsx の境界を決める\n（RSC / Client）"]
-    S3["Step 3\nデータ取得を\nSuspense 単位で切る"]
-    S4["Step 4\nUI をコンポーネントに\n分割する（責務）"]
-    S5["Step 5\n必要な状態だけ\n追加する"]
-    S6["Step 6\nアクション\n（Server Action）\nをつなぐ"]
+    S2["Step 2\nRSC / Client の境界"]
+    S3["Step 3\nSuspense 単位の取得"]
+    S4["Step 4\nコンポーネント分割"]
+    S5["Step 5\n状態を追加する"]
+    S6["Step 6\nServer Action 接続"]
 
     S1 --> S2 --> S3 --> S4 --> S5 --> S6
 ```
