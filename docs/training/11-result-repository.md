@@ -15,12 +15,12 @@
 > **【より深く】この章は `lib/` の中身を読み解くオプション章です。**
 > 第 05〜10 章で `taskRepository` / `taskService` を import して使ってきましたが、
 > ここではその実装を読み解いて理解を深めます。コードはリポジトリに既に存在するので、
-> `git show main:lib/...` で見比べながら進めてください。
+> `git show answer/main:lib/...` で見比べながら進めてください。
 >
 > ```bash
-> git show main:lib/result.ts                               # Result 型
-> git show main:lib/errors.ts                               # AppError 定義
-> git show main:lib/db/repositories/task-repository.ts     # タスク Repository
+> git show answer/main:lib/result.ts                               # Result 型
+> git show answer/main:lib/errors.ts                               # AppError 定義
+> git show answer/main:lib/db/repositories/task-repository.ts     # タスク Repository
 > ```
 
 ---

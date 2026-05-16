@@ -229,7 +229,7 @@ cat lib/utils.ts
 > デザインをカスタマイズしたい場合は `components/ui/button.tsx` などを自由に書き換えてください。
 >
 > ```bash
-> git show main:components/ui/button.tsx   # 完成形の参照
+> git show answer/main:components/ui/button.tsx   # 完成形の参照
 > ```
 
 ```bash

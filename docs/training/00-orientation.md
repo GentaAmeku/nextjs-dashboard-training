@@ -176,16 +176,16 @@ pnpm db:studio    # Drizzle Studio を起動（DB の GUI）
 
 ## 0-7. 研修の進め方
 
-この研修では**ゼロから実装**しますが、`main` ブランチには完成形のコードが入っています。
+この研修では**ゼロから実装**しますが、[回答リポジトリ](https://github.com/GentaAmeku/dashboard-playground-nextjs) に完成形のコードがあります。
 
 詰まったときはいつでも参照できます。ただし、すぐに答えを見ると学習効果が落ちるので、**まず 30 分は自力で考えることを推奨します**。
 
 ```bash
-# 特定ファイルの完成形を表示する
-git show main:app/(authed)/tasks/actions/tasks.ts
+# 特定ファイルの完成形を表示する（answer リモート登録後）
+git show answer/main:app/(authed)/tasks/actions/tasks.ts
 
-# main ブランチとの差分を見る
-git diff main -- lib/result.ts
+# 回答リポジトリとの差分を見る
+git diff answer/main -- lib/result.ts
 ```
 
 ---

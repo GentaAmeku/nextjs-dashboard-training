@@ -13,11 +13,11 @@
 > [!IMPORTANT]
 > **【必須】このリポジトリには `lib/db/` の完成形ファイルが同梱されています。**
 > `pnpm db:push` で DB を作成するのがこの章の目的です。手順は写経でも **コピーで素早く進めても問題ありません**。
-> 差分が出たら `main` ブランチを正として確認してください。
+> 差分が出たら回答リポジトリを正として確認してください。
 >
 > ```bash
-> git show main:lib/db/schema.ts   # DB スキーマ定義
-> git show main:lib/db/client.ts   # Drizzle クライアント
+> git show answer/main:lib/db/schema.ts   # DB スキーマ定義
+> git show answer/main:lib/db/client.ts   # Drizzle クライアント
 > ```
 
 ---

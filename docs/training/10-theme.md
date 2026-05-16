@@ -16,7 +16,7 @@
 > 本章では仕組みを理解しながらコピーで進めて構いません。
 >
 > ```bash
-> git show main:lib/constants/themes.ts   # テーマ定数定義
+> git show answer/main:lib/constants/themes.ts   # テーマ定数定義
 > ```
 
 ---
@@ -261,7 +261,7 @@ export default function RootLayout({ children }) {
 > 自分でデザインを変えたい場合は自由に書き換えてください。
 >
 > ```bash
-> git show main:components/AppHeader/components/ToggleThemeButton/index.tsx
+> git show answer/main:components/AppHeader/components/ToggleThemeButton/index.tsx
 > ```
 
 ```bash

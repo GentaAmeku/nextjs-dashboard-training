@@ -14,10 +14,10 @@
 > [!IMPORTANT]
 > **【コピー OK】`lib/cache/tags.ts` はリポジトリに同梱済みです。**
 > 本章では仕組みを理解しながらコピーで進めて構いません。
-> 差分が出たら `main` ブランチを正として確認してください。
+> 差分が出たら回答リポジトリを正として確認してください。
 >
 > ```bash
-> git show main:lib/cache/tags.ts   # キャッシュタグ定数
+> git show answer/main:lib/cache/tags.ts   # キャッシュタグ定数
 > ```
 
 ---

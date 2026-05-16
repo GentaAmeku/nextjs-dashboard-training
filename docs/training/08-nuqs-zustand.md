@@ -147,8 +147,8 @@ export async function TaskListContainer({ searchParams }: Props) {
 > 本章のメインは「nuqs で URL とフィルタを同期する仕組み」と「Zustand でダイアログ状態を管理する方法」の理解です。
 >
 > ```bash
-> git show main:app/\(authed\)/tasks/components/TaskFilters/index.tsx
-> git show main:app/\(authed\)/tasks/components/DeleteTaskDialog/index.tsx
+> git show answer/main:app/\(authed\)/tasks/components/TaskFilters/index.tsx
+> git show answer/main:app/\(authed\)/tasks/components/DeleteTaskDialog/index.tsx
 > ```
 
 ```tsx

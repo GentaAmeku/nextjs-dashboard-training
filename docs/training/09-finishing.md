@@ -22,8 +22,8 @@
 > この章のメインは「コンポーネントの配置と layout.tsx への組み込み」の理解です。
 >
 > ```bash
-> git show main:app/\(authed\)/components/AppSidebar/index.tsx
-> git show main:app/\(authed\)/components/AppSidebar/LogoutButton.tsx
+> git show answer/main:app/\(authed\)/components/AppSidebar/index.tsx
+> git show answer/main:app/\(authed\)/components/AppSidebar/LogoutButton.tsx
 > ```
 
 （以降のコンポーネント実装は後続のセクションに続きます）

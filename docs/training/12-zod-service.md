@@ -13,12 +13,12 @@
 > [!IMPORTANT]
 > **【より深く】この章は `lib/` の中身を読み解くオプション章です。**
 > 第 05〜10 章で使ってきた `taskService` の実装を読み解いて理解を深めます。
-> コードはリポジトリに既に存在するので、`git show main:lib/...` で見比べながら進めてください。
+> コードはリポジトリに既に存在するので、`git show answer/main:lib/...` で見比べながら進めてください。
 >
 > ```bash
-> git show main:lib/validation/task-validation.ts         # 作成・更新バリデーション
-> git show main:lib/validation/task-query-validation.ts   # 一覧クエリバリデーション
-> git show main:lib/db/services/task-service.ts           # タスク Service
+> git show answer/main:lib/validation/task-validation.ts         # 作成・更新バリデーション
+> git show answer/main:lib/validation/task-query-validation.ts   # 一覧クエリバリデーション
+> git show answer/main:lib/db/services/task-service.ts           # タスク Service
 > ```
 
 ---

@@ -108,11 +108,22 @@ git switch -c training/<自分の名前>
 # 例: git switch -c training/yamada
 ```
 
-### 2. JSX（見た目）はコピーして OK
+### 2. 回答リポジトリをリモートに登録する（初回のみ）
 
-各章で JSX コードブロックの前に `[!TIP]` Callout が出てきます。コンポーネントのマークアップは **`git show main:...` でコピーして進めることを推奨** します。本章のメインはロジックの組み立て方の理解です。デザインを変えたい場合は自由に書き換えて構いません。
+完成形のコードは別リポジトリで管理されています。以下を **一度だけ** 実行して `answer` という名前でリモートに登録してください。
 
-### 3. `lib/` はリポジトリに同梱済み
+```bash
+git remote add answer https://github.com/GentaAmeku/dashboard-playground-nextjs
+git fetch answer
+```
+
+以後、各章で `git show answer/main:path/to/file` の形式で完成形のファイルを確認できます。
+
+### 3. JSX（見た目）はコピーして OK
+
+各章で JSX コードブロックの前に `[!TIP]` Callout が出てきます。コンポーネントのマークアップは **`git show answer/main:...` でコピーして進めることを推奨** します。本章のメインはロジックの組み立て方の理解です。デザインを変えたい場合は自由に書き換えて構いません。
+
+### 4. `lib/` はリポジトリに同梱済み
 
 `lib/` 配下（DB・認証・Result 型・Repository・Service など）の完成形はすでにリポジトリに入っています。
 
@@ -120,20 +131,20 @@ git switch -c training/<自分の名前>
 - **06・07・10章（コピーOK）**: `lib/auth.ts` 等はコピーして設定の意味を読む
 - **11–12章（より深く）**: 第 10 章完了後に中身を読み解く
 
-### 4. 章の手順に従って実装する
+### 5. 章の手順に従って実装する
 
 各章の末尾に `> CHECK` という確認リストがあります。すべてにチェックが入ったら次の章へ進みます。
 
-### 5. 詰まったら
+### 6. 詰まったら
 
-各章の `<details>` ブロックが HINT です。**まず 30 分は自力で考えてください。** それでも解決しない場合は HINT を開き、さらに詰まったら `main` ブランチの完成形コードを参照します。
+各章の `<details>` ブロックが HINT です。**まず 30 分は自力で考えてください。** それでも解決しない場合は HINT を開き、さらに詰まったら [回答リポジトリ](https://github.com/GentaAmeku/dashboard-playground-nextjs) の完成形コードを参照します。
 
 ```bash
-# 特定ファイルの答えを表示する
-git show main:app/(authed)/tasks/actions/tasks.ts
+# 特定ファイルの答えを表示する（手順 2 で answer リモートを登録済みの場合）
+git show answer/main:app/(authed)/tasks/actions/tasks.ts
 ```
 
-### 6. 章ごとにコミットする
+### 7. 章ごとにコミットする
 
 ```bash
 git add -p   # 変更を確認しながらステージング
@@ -149,18 +160,18 @@ git commit -m "ch05: Server Actions でタスク CRUD を実装"
 - **`.env.local` は絶対にコミットしない**（`.gitignore` 済みですが念のため）
 - **`local.db` もコミットしない**（`.gitignore` 済み）
 - 第 06 章で Google OAuth を設定するため、事前に Google アカウントが必要です
-- 不明点は Slack の研修チャンネルへ
+- 不明点はチャットで連絡してください
 
 ---
 
 ## このリポジトリと手順書の関係
 
-`main` ブランチには完成形のコードが入っています。手順書は「**完成形を自分の手で再現する手引き**」です。
+完成形のコードは [回答リポジトリ（dashboard-playground-nextjs）](https://github.com/GentaAmeku/dashboard-playground-nextjs) にあります。手順書は「**完成形を自分の手で再現する手引き**」です。
 
-| main ブランチ          | docs/training/（この手順書）      |
-| ---------------------- | --------------------------------- |
-| 完成形コード           | 作り方のガイド                    |
-| いつでも参照可         | 30 分悩んでから開くことを推奨     |
+| 回答リポジトリ (`answer`)    | docs/training/（この手順書）      |
+| ---------------------------- | --------------------------------- |
+| 完成形コード                 | 作り方のガイド                    |
+| いつでも参照可               | 30 分悩んでから開くことを推奨     |
 
 ---
 

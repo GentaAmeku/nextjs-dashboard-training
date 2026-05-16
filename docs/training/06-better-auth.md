@@ -17,9 +17,9 @@
 > 中身の詳細（Result 型・Repository・Service）は **第 11–12 章（より深く）** で扱います。
 >
 > ```bash
-> git show main:lib/auth.ts         # Better Auth サーバー設定
-> git show main:lib/auth-client.ts  # クライアント向けヘルパー
-> git show main:proxy.ts            # Edge ルーター（Cookie チェック）
+> git show answer/main:lib/auth.ts         # Better Auth サーバー設定
+> git show answer/main:lib/auth-client.ts  # クライアント向けヘルパー
+> git show answer/main:proxy.ts            # Edge ルーター（Cookie チェック）
 > ```
 
 ---
@@ -375,8 +375,8 @@ export default function AuthedLayout({
 > デザインをカスタマイズしたい場合は自由に書き換えても構いません。
 >
 > ```bash
-> git show main:app/login/components/GoogleSignInButton.tsx
-> git show main:app/login/page.tsx
+> git show answer/main:app/login/components/GoogleSignInButton.tsx
+> git show answer/main:app/login/page.tsx
 > ```
 
 ```tsx

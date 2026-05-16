@@ -180,8 +180,8 @@ export function CreateTaskForm() {
 > 自分でデザインをカスタマイズしたい場合は自由に書き換えても構いません。
 >
 > ```bash
-> git show main:app/\(authed\)/tasks/components/TaskForm/index.tsx
-> git show main:app/\(authed\)/tasks/components/TaskForm/hooks/useTaskForm.ts
+> git show answer/main:app/\(authed\)/tasks/components/TaskForm/index.tsx
+> git show answer/main:app/\(authed\)/tasks/components/TaskForm/hooks/useTaskForm.ts
 > ```
 
 ## 5-5. `react-hook-form` との二段構え
