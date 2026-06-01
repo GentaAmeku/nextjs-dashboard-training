@@ -6,8 +6,12 @@ export default withMermaid(
     title: "Next.js Dashboard Training",
     description: "フロントエンドエンジニア向け Next.js ハンズオン研修教材",
     lang: "ja",
-    // GitHub Pages のサブパス
-    base: "/nextjs-dashboard-training/",
+    // 開発(dev)は "/"、本番ビルド(GitHub Pages)だけサブパスにする。
+    // → `pnpm docs:dev` は http://localhost:5173/ でそのまま開ける。
+    base:
+      process.env.NODE_ENV === "production"
+        ? "/nextjs-dashboard-training/"
+        : "/",
 
     themeConfig: {
       nav: [

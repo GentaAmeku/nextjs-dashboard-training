@@ -3,7 +3,7 @@
 このドキュメント群は、**dashboard-playground-nextjs** を題材に Next.js アプリケーションをゼロから作り上げる研修用の手順書です。
 
 > [!TIP]
-> 仕組みから理解したい方へ：<a href="/nextjs-dashboard-training/slides/how-nextjs-works.html" target="_blank" rel="noopener">「Next.js のウェブアプリはどう動くのか？」図解スライド</a>（別タブで開きます）
+> 仕組みから理解したい方へ：<a href="../slides/how-nextjs-works.html" target="_blank" rel="noopener">「Next.js のウェブアプリはどう動くのか？」図解スライド</a>（別タブで開きます）
 
 ---
 

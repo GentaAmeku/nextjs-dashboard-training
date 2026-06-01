@@ -12,7 +12,7 @@
 
 > [!TIP]
 > 手を動かす前に、**「Next.js のウェブアプリはどう動くのか？」を図解スライド**でざっくり掴んでおくと理解が早いです。
-> <a href="/nextjs-dashboard-training/slides/how-nextjs-works.html" target="_blank" rel="noopener">▶ 仕組みスライドを開く（別タブ）</a>
+> <a href="../slides/how-nextjs-works.html" target="_blank" rel="noopener">▶ 仕組みスライドを開く（別タブ）</a>
 
 ## 0-1. この研修について
 
