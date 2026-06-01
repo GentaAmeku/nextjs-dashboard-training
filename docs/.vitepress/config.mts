@@ -14,6 +14,12 @@ export default withMermaid(
         { text: "ホーム", link: "/" },
         { text: "研修を始める", link: "/training/00-orientation" },
         {
+          text: "仕組みスライド",
+          link: "/slides/how-nextjs-works.html",
+          target: "_blank",
+          rel: "noopener",
+        },
+        {
           text: "GitHub",
           link: "https://github.com/GentaAmeku/nextjs-dashboard-training",
         },
