@@ -154,7 +154,7 @@ export default function TaskFilters() {
 ```
 
 > NOTE
-> 検索入力は `debounce(500)` で URL 更新を間引きます。各 Filter サブコンポーネントは完成系からコピーしてください。
+> 検索入力は `debounce(500)` で URL 更新を間引きます。各 Filter サブコンポーネント（`SearchFilter` / `StatusFilter` / `PriorityFilter`）は完成系からコピーしてください。`StatusFilter` / `PriorityFilter` は第 05 章でコピーした `tasks/constants/index.ts`（`STATUS_OPTIONS` / `PRIORITY_OPTIONS`）を再利用します。
 
 ---
 

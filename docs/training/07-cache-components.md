@@ -128,6 +128,7 @@ export const getTaskById = async (id: number): Promise<Result<Task>> => {
 > NOTE
 > - `getTasks` の引数は完成系では nuqs のパーサ型を使います（第 08 章で導入）。ここでは `TaskQuery`（`lib/validation`）で受けています。
 > - `updateTag` は **必ず `"use server"` のコンテキスト（Server Action）内**で呼びます。
+> - 第 05 章の `EditTaskForm` の `taskService.getTask` 直呼びを、ここで定義した `getTaskById`（キャッシュ付き）に置き換えます。
 
 ---
 

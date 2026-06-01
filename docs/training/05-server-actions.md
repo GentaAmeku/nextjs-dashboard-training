@@ -12,13 +12,15 @@
 ---
 
 > [!TIP]
-> **フォームのマークアップ（`TaskForm` と各 Field・`useTaskForm`・`getFieldError`）は完成系からコピーして OK です。**
+> **フォーム一式（`TaskForm`／`components/` 配下の各 Field／`hooks/useTaskForm`／`utils/getFieldError`）と、選択肢定数 `tasks/constants/index.ts` は完成系からコピーして OK です。**
 > この章の主目的は **Server Action の定義**と **`useActionState` での接続**の理解です。
 >
 > ```bash
+> # TaskForm/ ディレクトリ一式（index・components/*Field・hooks・utils）をコピー
 > git show answer/main:app/\(authed\)/tasks/components/TaskForm/index.tsx
-> git show answer/main:app/\(authed\)/tasks/components/TaskForm/hooks/useTaskForm.ts
-> git show answer/main:app/\(authed\)/tasks/components/TaskForm/utils/getFieldError.ts
+> git show answer/main:app/\(authed\)/tasks/components/TaskForm/components/StatusField.tsx
+> # StatusField / PriorityField が参照する選択肢定数も必要
+> git show answer/main:app/\(authed\)/tasks/constants/index.ts
 > ```
 
 ---
@@ -210,7 +212,7 @@ export function TaskForm({ task, action }: TaskFormProps) {
 ```
 
 > NOTE
-> 各 Field は `getFieldError(state, "name")` で **サーバー側のバリデーションエラー**を、`react-hook-form`（`useTaskForm`）で**クライアント側のバリデーション**を表示する二段構えです。Field の中身は完成系をコピーしてください。
+> 各 Field は `getFieldError(state, "name")` で **サーバー側のバリデーションエラー**を、`react-hook-form`（`useTaskForm`）で**クライアント側のバリデーション**を表示する二段構えです。Field の中身は完成系をコピーしてください。`StatusField` / `PriorityField` は選択肢を `app/(authed)/tasks/constants/index.ts`（`STATUS_OPTIONS` / `PRIORITY_OPTIONS`）から読むので、**このファイルも忘れずコピー**します。
 
 ---
 
@@ -269,15 +271,12 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
 }
 ```
 
-`EditTaskContent` は `await params` で `id` を取り出し、対象タスクを取得して `TaskForm`（`updateTask` アクション）を描画します。
+完成系と同じく、`EditTaskContent`（`id` を取り出して検証）→ `EditTaskForm`（タスクを取得して `TaskForm` を描画）の 2 段構成にします。
 
 ```tsx
-// app/(authed)/tasks/[id]/edit/components/EditTaskContent.tsx（コピー可）
+// app/(authed)/tasks/[id]/edit/components/EditTaskContent.tsx
 import { notFound } from "next/navigation";
-import { updateTask } from "@/app/(authed)/tasks/actions/tasks";
-import { TaskForm } from "@/app/(authed)/tasks/components/TaskForm";
-import { taskService } from "@/lib/db/services/task-service";
-import { isErr } from "@/lib/result";
+import { EditTaskForm } from "./EditTaskForm";
 
 export async function EditTaskContent({
   params,
@@ -285,7 +284,23 @@ export async function EditTaskContent({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const result = await taskService.getTask(Number(id));
+  const taskId = Number.parseInt(id, 10);
+  if (Number.isNaN(taskId)) notFound();
+  return <EditTaskForm taskId={taskId} />;
+}
+```
+
+```tsx
+// app/(authed)/tasks/[id]/edit/components/EditTaskForm.tsx
+import { notFound } from "next/navigation";
+import { updateTask } from "@/app/(authed)/tasks/actions/tasks";
+import { TaskForm } from "@/app/(authed)/tasks/components/TaskForm";
+import { taskService } from "@/lib/db/services/task-service";
+import { isErr } from "@/lib/result";
+
+export async function EditTaskForm({ taskId }: { taskId: number }) {
+  // 第 05 章では Service を直接呼ぶ。第 07 章でキャッシュ付き getTaskById アクションに差し替える。
+  const result = await taskService.getTask(taskId);
   if (isErr(result)) notFound();
   return <TaskForm task={result.value} action={updateTask} />;
 }
@@ -293,7 +308,7 @@ export async function EditTaskContent({
 
 > NOTE
 > `EditTaskFormSkeleton`（読み込み中の見た目）は完成系からコピーしてください。
-> 第 07 章で `taskService.getTask` 直呼びを、キャッシュ付きの `getTaskById` アクションに置き換えます。
+> 完成系の `EditTaskForm` はキャッシュ付き `getTaskById` アクションを使います（第 07 章で差し替え）。
 
 ---
 
