@@ -206,36 +206,43 @@
     <p class="cap" style="margin-top:1.2rem;">この「どこで調理するか（サーバー？ブラウザ？）」の配分が、Next.js を理解する<b>カギ</b>です。</p>
   </section>
 
-  <!-- 3. 従来のReact（CSR）の課題 -->
-  <section class="slide" data-title="従来のReact（CSR）の課題">
+  <!-- 3. 従来の構成：React + 別APIサーバー -->
+  <section class="slide" data-title="従来の構成：React + APIサーバー">
     <span class="kicker">STEP 2 / 比較</span>
-    <h2>従来の React は「全部ブラウザで」やっていた</h2>
-    <div class="stage grid2">
-      <div class="box box--client">
-        <div class="t"><span class="tag tag--client">CSR</span> 従来のやり方</div>
-        <div class="d" style="margin-top:.6rem;">
-          ① ほぼ空の HTML が届く<br>
-          ② 大きな JavaScript を全部ダウンロード<br>
-          ③ JS が DB に問い合わせ → ようやく描画
-        </div>
+    <h2>従来の構成：React（ブラウザ）＋ 別の API サーバー</h2>
+    <p class="cap">多くの現場では、画面は React（ブラウザ）、データは<b>別の API サーバー</b>（Node・Ruby・Python・Go・Java… フロントとは<b>別言語</b>のことも）。ブラウザは <code class="k">fetch()</code> で API を呼び、<b>DB を触るのは API サーバー側</b>です。</p>
+    <div class="stage row center">
+      <div class="box box--client" style="width:230px;">
+        <div class="t"><span class="tag tag--client">ブラウザ</span> React SPA</div>
+        <div class="d">UI を描画。データは <code class="k">fetch()</code> で取得。</div>
       </div>
-      <div class="box">
-        <div class="t">⚠️ 困りごと</div>
-        <ul class="clean">
-          <li><b>最初の表示が遅い</b>（JS を読み終えるまで真っ白）</li>
-          <li><b>JS が重くなる</b>（DBアクセス等もブラウザへ）</li>
-          <li><b>秘密が漏れる</b>恐れ（鍵やトークンがブラウザに）</li>
-        </ul>
+      <div class="arrow">→<span class="lbl">Fetch API（JSON）</span></div>
+      <div class="box box--server" style="width:230px;">
+        <div class="t"><span class="tag tag--server">API サーバー</span></div>
+        <div class="d">別言語のことも。ロジック＋DBアクセス（鍵はここ）。</div>
+      </div>
+      <div class="arrow">→<span class="lbl">SQL</span></div>
+      <div class="box box--db" style="width:150px;">
+        <div class="t"><span class="tag tag--db">DB</span></div>
+        <div class="d">データの保管庫。</div>
       </div>
     </div>
-    <p class="cap" style="margin-top:1.1rem;">→ 「なんでもブラウザ」をやめて、<b>サーバーでできることはサーバーで</b>やろう、というのが次の発想。</p>
+    <div class="box" style="margin-top:1.1rem;">
+      <div class="t">⚠️ この構成の大変なところ</div>
+      <ul class="clean">
+        <li><b>最初の表示が遅い</b>（空HTML → JS全DL → <code class="k">fetch</code> でやっと描画）</li>
+        <li><b>フロントとバックを別々に用意・運用</b>（言語もリポジトリも分かれ、API 設計・つなぎ込みの手間）</li>
+        <li><b>型やバリデーションが二重</b>になりがち（フロント側と API 側）</li>
+      </ul>
+    </div>
+    <p class="cap" style="margin-top:1rem;">→ この「フロント＋API（＋別言語）」を、<b>Next.js は 1 つに統合</b>します。</p>
   </section>
 
   <!-- 4. Next.jsの発想：役割分担 -->
   <section class="slide" data-title="Next.js の発想：役割分担">
     <span class="kicker">STEP 3 / 発想の転換</span>
     <h2>Next.js は処理を「サーバー」と「ブラウザ」に分担する</h2>
-    <p class="cap">最初の重い仕事（データ取得・HTML 組み立て）は<b>サーバー</b>で済ませてから送る。ブラウザは<b>仕上げと操作</b>に集中する。</p>
+    <p class="cap">別の API サーバーを立てず、フロントもバックも<b>同じ TypeScript</b> で書く。最初の重い仕事（データ取得・HTML 組み立て）は<b>サーバー</b>で済ませてから送り、ブラウザは<b>仕上げと操作</b>に集中する。</p>
     <div class="stage row center">
       <div class="box box--server" style="width:300px;">
         <div class="t"><span class="tag tag--server">サーバー</span> で完成に近づける</div>
