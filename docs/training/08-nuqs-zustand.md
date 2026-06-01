@@ -1,504 +1,326 @@
-# 第 08 章：nuqs + Zustand
+# 第 08 章：nuqs + Zustand（タスク一覧 UI）
 
 ## この章の目標
 
 > **CHECK**
-> - [ ] nuqs を使ってフィルタ条件が URL のクエリパラメータに乗る
-> - [ ] ページをリロードしてもフィルタが保持される
-> - [ ] Server と Client で同じパーサー定義を共有している
-> - [ ] Zustand で削除ダイアログの open/close 状態を管理できる
+> - [ ] フィルタ条件が URL クエリに乗り、リロードしても保持される
+> - [ ] Server と Client で同じパーサー定義（`searchParamsParsers`）を共有している
+> - [ ] タスク一覧（`TaskList`）が `getTasks`（第 07 章のキャッシュ）から表示される
+> - [ ] 作成・削除すると一覧が即更新される（キャッシュ無効化が効く）
+> - [ ] Zustand で削除ダイアログの開閉を管理できる
 
 ---
 
-## 8-1. URL 状態管理とは
-
-「検索条件やフィルタを URL のクエリパラメータに入れる」という設計のことです。
-
-```
-http://localhost:3000/tasks?name=会議&status=in_progress&priority=high
-                            ^^^^^^^^ ^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^^
-                            検索ワード  ステータス絞り込み  優先度絞り込み
-```
-
-**なぜ URL に状態を入れるのか：**
-
-- ブラウザの「戻る」ボタンで前のフィルタ状態に戻れる
-- URL を共有すれば、同じフィルタが適用された状態を共有できる
-- ページをリロードしても状態が保持される
+> [!TIP]
+> **一覧・フィルタ・行・ダイアログのマークアップは完成系からコピーして OK です。**
+> この章の主目的は「**nuqs で URL とフィルタを同期**」「**Zustand でダイアログ状態を管理**」「**Server/Client でパーサーを共有**」の理解です。
+>
+> ```bash
+> git show answer/main:app/\(authed\)/tasks/components/TaskList/presentational.tsx
+> git show answer/main:app/\(authed\)/tasks/components/TaskList/components/TaskItem/index.tsx
+> git show answer/main:app/\(authed\)/tasks/components/TaskFilters/index.tsx
+> ```
 
 ---
 
-## 8-2. nuqs とは
+## 8-1. なぜ URL に状態を持つのか
 
-[nuqs](https://nuqs.47ng.com) は Next.js の URL クエリパラメータを簡単に管理できるライブラリです。
+検索・フィルタ条件を URL クエリに入れます。
 
-```bash
-pnpm add nuqs
+```
+/tasks?name=login&status=in_progress&priority=high
 ```
 
-nuqs の特長：
-- **型安全**：クエリパラメータを TypeScript の型で管理できる
-- **Server Component 対応**：サーバー側でも同じパーサー定義を使える
-- **`useState` のような使い心地**：`[value, setValue]` で直感的に扱える
+- ブラウザの戻る / 進むでフィルタ状態を行き来できる
+- URL を共有すれば同じフィルタ状態を共有できる
+- リロードしても状態が保持される
 
 ---
 
-## 8-3. `NuqsAdapter` のセットアップ
+## 8-2. `NuqsAdapter` をルートレイアウトに追加する
 
-ルートレイアウトに `NuqsAdapter` を追加します。
+第 03 章のルートレイアウト（`app/layout.tsx`）に `NuqsAdapter` を**追記**します。
 
 ```tsx
-// app/layout.tsx
+// app/layout.tsx（NuqsAdapter を追記）
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="ja">
-      <body>
-        {/* nuqs のアダプタでアプリ全体を包む */}
-        <NuqsAdapter shallow={false}>{children}</NuqsAdapter>
-      </body>
-    </html>
-  );
-}
+// ...
+<body className={/* ... */}>
+  <NuqsAdapter defaultOptions={{ shallow: false }}>{children}</NuqsAdapter>
+</body>
 ```
 
 > NOTE
-> `shallow={false}` は URL の変更時に Next.js のルーター経由で遷移する設定です。
-> これにより、URL が変わったときに Server Component が再実行されてデータが再取得されます。
+> `shallow: false` にすると、URL 変更時に Next.js のルーター経由で遷移し、**Server Component が再実行されてデータが再取得**されます。
+> 第 10 章では、この `NuqsAdapter` の外側をさらに `ThemeProvider` で包みます。
 
 ---
 
-## 8-4. クエリパラメータの型定義（Server / Client 共通）
+## 8-3. パーサー定義（Server / Client 共通）
 
-Server と Client の両方で同じパーサー定義を共有します。
-
-```bash
-mkdir -p "app/(authed)/tasks/lib/nuqs"
-touch "app/(authed)/tasks/lib/nuqs/searchParams.ts"
-```
+URL クエリの型を 1 か所で定義し、Server（一覧取得）と Client（フィルタ UI）の両方で共有します。
 
 ```typescript
 // app/(authed)/tasks/lib/nuqs/searchParams.ts
-import { createSearchParamsCache, parseAsString, parseAsStringLiteral } from "nuqs/server";
+import {
+  createSearchParamsCache,
+  parseAsString,
+  parseAsStringEnum,
+} from "nuqs/server";
+import { PRIORITY, STATUS } from "@/lib/db/schema";
 
-// ステータスとして有効な値の配列
-const statusValues = ["todo", "in_progress", "done"] as const;
-const priorityValues = ["low", "medium", "high"] as const;
-
-// クエリパラメータのパーサー定義
-// Server Component と Client Component の両方でこれを使う
 export const searchParamsParsers = {
   name: parseAsString.withDefault(""),
-  status: parseAsStringLiteral(statusValues).withDefault("" as const),
-  priority: parseAsStringLiteral(priorityValues).withDefault("" as const),
+  status: parseAsStringEnum(Object.values(STATUS)),     // pending / in_progress / completed / cancelled
+  priority: parseAsStringEnum(Object.values(PRIORITY)), // low / medium / high
 };
 
-// Server Component で searchParams を型安全に使うためのキャッシュ
+// Server Component で searchParams を型安全にパースするためのキャッシュ
 export const searchParamsCache = createSearchParamsCache(searchParamsParsers);
 ```
 
 > NOTE
-> `searchParamsParsers` を1か所で定義することで：
-> - Server 側と Client 側でパーサーが一致することが保証される
-> - `"todo" | "in_progress" | "done"` という型が自動で付く
+> `STATUS` / `PRIORITY`（第 04 章）から値を流用するので、**スキーマとフィルタの値が必ず一致**します。
 
 ---
 
-## 8-5. Server Component でクエリパラメータを使う
+## 8-4. タスク一覧を組み立てる（Server: container → presentational → TaskItem）
+
+一覧は **container（サーバー・データ取得）→ presentational（表示）→ TaskItem（行）** に分けます。
 
 ```tsx
 // app/(authed)/tasks/components/TaskList/container.tsx
-import { searchParamsCache } from "../../lib/nuqs/searchParams";
-import { getTasks } from "../../actions/tasks";
-import { isErr } from "@/lib/result";
-import { TaskListPresentation } from "./presentation";
+import type { SearchParams } from "nuqs/server";
+import { getTasks } from "@/app/(authed)/tasks/actions/tasks";
+import { searchParamsCache } from "@/app/(authed)/tasks/lib/nuqs/searchParams";
+import TaskListPresentational from "./presentational";
 
-type Props = {
-  // page.tsx から searchParams を受け取る
-  searchParams: Record<string, string | string[] | undefined>;
+type TaskListContainerProps = {
+  searchParams: Promise<SearchParams>;
 };
 
-export async function TaskListContainer({ searchParams }: Props) {
-  // searchParamsCache で型安全にパース
-  const { name, status, priority } = searchParamsCache.parse(searchParams);
-
-  // パースした値でデータを取得
-  const result = await getTasks({
-    name: name || undefined,
-    status: (status as string) || undefined,
-    priority: (priority as string) || undefined,
-  });
-
-  if (isErr(result)) {
-    return <p className="text-destructive">エラー: {result.error.message}</p>;
-  }
-
-  return <TaskListPresentation tasks={result.value} />;
-}
-```
-
----
-
-## 8-6. Client Component でフィルタ UI を作る
-
-> [!TIP]
-> **フィルタ UI・削除ダイアログの JSX はリポジトリからコピーして進めて OK です。**
-> 本章のメインは「nuqs で URL とフィルタを同期する仕組み」と「Zustand でダイアログ状態を管理する方法」の理解です。
->
-> ```bash
-> git show answer/main:app/\(authed\)/tasks/components/TaskFilters/index.tsx
-> git show answer/main:app/\(authed\)/tasks/components/DeleteTaskDialog/index.tsx
-> ```
-
-```tsx
-// app/(authed)/tasks/components/TaskFilters/index.tsx
-'use client';
-
-import { useQueryStates } from "nuqs";
-import { useTransition } from "react";
-import { searchParamsParsers } from "../../lib/nuqs/searchParams";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-
-export function TaskFilters() {
-  const [isPending, startTransition] = useTransition();
-
-  // searchParamsParsers を使って URL と状態を同期する
-  const [{ name, status, priority }, setSearchParams] = useQueryStates(
-    searchParamsParsers,
-    {
-      // 変更をトランジション内で行う（UI がブロックされない）
-      startTransition,
-      shallow: false,  // URL 変更 → Server Component が再実行される
-    },
-  );
-
-  return (
-    <div className="flex flex-col gap-3 sm:flex-row">
-      {/* 名前検索 */}
-      <Input
-        placeholder="タスク名で検索..."
-        value={name}
-        onChange={(e) =>
-          setSearchParams({ name: e.target.value || null })
-        }
-        className="sm:max-w-xs"
-      />
-
-      {/* ステータスフィルタ */}
-      <select
-        value={status}
-        onChange={(e) =>
-          setSearchParams({ status: (e.target.value as typeof status) || null })
-        }
-        className="border border-input rounded-md px-3 py-2 text-sm"
-      >
-        <option value="">すべてのステータス</option>
-        <option value="todo">未着手</option>
-        <option value="in_progress">進行中</option>
-        <option value="done">完了</option>
-      </select>
-
-      {/* 優先度フィルタ */}
-      <select
-        value={priority}
-        onChange={(e) =>
-          setSearchParams({ priority: (e.target.value as typeof priority) || null })
-        }
-        className="border border-input rounded-md px-3 py-2 text-sm"
-      >
-        <option value="">すべての優先度</option>
-        <option value="low">低</option>
-        <option value="medium">中</option>
-        <option value="high">高</option>
-      </select>
-
-      {/* フィルタをリセット */}
-      {(name || status || priority) && (
-        <Button
-          variant="ghost"
-          onClick={() =>
-            setSearchParams({ name: null, status: null, priority: null })
-          }
-          disabled={isPending}
-        >
-          リセット
-        </Button>
-      )}
-    </div>
-  );
-}
-```
-
----
-
-## 8-7. `page.tsx` でフィルタとリストを組み合わせる
-
-```tsx
-// app/(authed)/tasks/page.tsx
-import { Suspense } from "react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { TaskFilters } from "./components/TaskFilters";
-import { TaskListContainer } from "./components/TaskList/container";
-
-export default async function TasksPage({
+export default async function TaskListContainer({
   searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const params = await searchParams;
+}: TaskListContainerProps) {
+  // URL クエリを型安全にパース（第 07 章のキャッシュ付き getTasks を呼ぶ）
+  const parsedQuery = searchParamsCache.parse(await searchParams);
+  const result = await getTasks(parsedQuery);
+  const data = result.ok ? result.value : [];
+  return <TaskListPresentational tasks={data} />;
+}
+```
+
+> NOTE
+> `presentational.tsx`（一覧の表）と `TaskItem`（行＋編集/削除メニュー）は完成系からコピーしてください。`TaskItem` の削除メニュー（`DeleteMenuItem`）は次の Zustand ストアを使います。
+
+---
+
+## 8-5. フィルタ UI（Client: nuqs `useQueryStates`）
+
+```tsx
+// app/(authed)/tasks/components/TaskFilters/index.tsx（完成系・コピー可）
+"use client";
+
+import { debounce, useQueryStates } from "nuqs";
+import { searchParamsParsers } from "@/app/(authed)/tasks/lib/nuqs/searchParams";
+import type { TaskPriority, TaskStatus } from "@/lib/db/schema";
+import PriorityFilter from "./components/PriorityFilter";
+import SearchFilter from "./components/SearchFilter";
+import StatusFilter from "./components/StatusFilter";
+
+export default function TaskFilters() {
+  // searchParamsParsers を共有 → URL と状態を同期
+  const [query, setQuery] = useQueryStates(searchParamsParsers);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">タスク一覧</h1>
-        <Button asChild>
-          <Link href="/tasks/create">タスクを作成</Link>
-        </Button>
-      </div>
-
-      {/* クライアントコンポーネント（URL と状態を同期） */}
-      <TaskFilters />
-
-      {/* サーバーコンポーネント（URL パラメータでデータ取得） */}
-      <Suspense fallback={<p className="text-muted-foreground">読み込み中...</p>}>
-        <TaskListContainer searchParams={params} />
-      </Suspense>
+    <div className="flex items-center gap-2 mb-4">
+      <SearchFilter
+        searchValue={query.name}
+        onSearchChange={(v) =>
+          setQuery({ name: v }, { limitUrlUpdates: debounce(500) })
+        }
+      />
+      <StatusFilter
+        selectedStatus={query.status}
+        onStatusChange={(v: TaskStatus | null) => setQuery({ status: v })}
+      />
+      <PriorityFilter
+        selectedPriority={query.priority}
+        onPriorityChange={(v: TaskPriority | null) => setQuery({ priority: v })}
+      />
     </div>
   );
 }
 ```
 
----
-
-## 8-8. Zustand とは
-
-[Zustand](https://zustand.docs.pmnd.rs) は軽量なクライアント状態管理ライブラリです。
-
-このプロジェクトでは**削除ダイアログの開閉状態**だけを Zustand で管理しています。
-
-**なぜ Zustand を使うのか：**
-
-- 削除ダイアログは「どのタスクを削除するか」という情報をグローバルに持ちたい
-- `TaskList` の各行から「削除ボタン」をクリック → `DeleteTaskDialog` が開く
-- この 2 つのコンポーネントは親子でないため、`props` での受け渡しが難しい
+> NOTE
+> 検索入力は `debounce(500)` で URL 更新を間引きます。各 Filter サブコンポーネントは完成系からコピーしてください。
 
 ---
 
-## 8-9. Zustand ストアを作る
+## 8-6. 削除ダイアログ（Zustand）
 
-```bash
-mkdir -p "app/(authed)/tasks/stores"
-touch "app/(authed)/tasks/stores/delete-task-dialog-store.ts"
-```
+「行の削除メニュー」と「ダイアログ本体」は離れた場所にあるので、開閉状態を **Zustand** で共有します。
 
 ```typescript
 // app/(authed)/tasks/stores/delete-task-dialog-store.ts
-'use client';
-
 import { create } from "zustand";
 
-type DeleteTaskDialogState = {
+interface DeleteTaskDialogStore {
   isOpen: boolean;
   taskId: number | null;
-  taskName: string;
+  taskName: string | null;
   open: (taskId: number, taskName: string) => void;
   close: () => void;
-};
+}
 
-// Zustand ストアを作成する
-export const useDeleteTaskDialogStore = create<DeleteTaskDialogState>((set) => ({
+export const useDeleteTaskDialogStore = create<DeleteTaskDialogStore>((set) => ({
   isOpen: false,
   taskId: null,
-  taskName: "",
-
-  // ダイアログを開く（削除するタスクの情報を設定する）
-  open: (taskId, taskName) =>
-    set({ isOpen: true, taskId, taskName }),
-
-  // ダイアログを閉じる
-  close: () =>
-    set({ isOpen: false, taskId: null, taskName: "" }),
+  taskName: null,
+  open: (taskId, taskName) => set({ isOpen: true, taskId, taskName }),
+  close: () => set({ isOpen: false, taskId: null, taskName: null }),
 }));
 ```
 
----
-
-## 8-10. 削除ダイアログコンポーネントを作る
-
-```bash
-mkdir -p "app/(authed)/tasks/components/DeleteTaskDialog"
-touch "app/(authed)/tasks/components/DeleteTaskDialog/index.tsx"
-```
+ダイアログ本体は shadcn の **`Dialog`** を使います（`alert-dialog` ではありません）。
 
 ```tsx
 // app/(authed)/tasks/components/DeleteTaskDialog/index.tsx
-'use client';
+"use client";
 
-import { useTransition } from "react";
-import { useDeleteTaskDialogStore } from "../../stores/delete-task-dialog-store";
-import { deleteTask } from "../../actions/tasks";
+import { deleteTask } from "@/app/(authed)/tasks/actions/tasks";
+import { useDeleteTaskDialogStore } from "@/app/(authed)/tasks/stores/delete-task-dialog-store";
+import { Button } from "@/components/ui/button";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function DeleteTaskDialog() {
-  const [isPending, startTransition] = useTransition();
-
-  // Zustand から状態とアクションを取得
   const { isOpen, taskId, taskName, close } = useDeleteTaskDialogStore();
 
-  const handleDelete = () => {
-    if (!taskId) return;
-    startTransition(async () => {
-      await deleteTask(taskId);
-      close();
-    });
+  const handleDelete = async () => {
+    if (taskId === null) return;
+    await deleteTask(taskId); // 第 07 章で updateTasksCache 済み → 一覧が即更新
+    close();
   };
 
+  if (taskId === null || taskName === null) return null;
+
   return (
-    <AlertDialog open={isOpen} onOpenChange={(open) => !open && close()}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>タスクを削除しますか？</AlertDialogTitle>
-          <AlertDialogDescription>
-            「{taskName}」を削除します。この操作は取り消せません。
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={close} disabled={isPending}>
-            キャンセル
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleDelete}
-            disabled={isPending}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            {isPending ? "削除中..." : "削除する"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete this task: {taskName} ?</DialogTitle>
+          <DialogDescription>
+            You are about to delete a task with the ID TASK-{taskId}. This action
+            cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={close}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={handleDelete}>
+            Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 ```
 
+行の削除メニュー（`DeleteMenuItem`）は、ストアの `open(taskId, taskName)` を呼んでダイアログを開きます（完成系からコピー）。
+
+```bash
+git show answer/main:app/\(authed\)/tasks/components/TaskList/components/TaskItem/components/DeleteMenuItem/index.tsx
+```
+
 ---
 
-## 8-11. タスク一覧に削除ボタンを追加する
+## 8-7. `page.tsx` で組み合わせる
 
 ```tsx
-// app/(authed)/tasks/components/TaskList/presentation.tsx
-'use client';
-
+// app/(authed)/tasks/page.tsx
+import { Plus } from "lucide-react";
 import Link from "next/link";
-import { useDeleteTaskDialogStore } from "../../stores/delete-task-dialog-store";
-import type { Task } from "@/lib/db/schema";
+import type { SearchParams } from "nuqs/server";
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
+import { DeleteTaskDialog } from "./components/DeleteTaskDialog";
+import TaskFilters from "./components/TaskFilters";
+import TaskList from "./components/TaskList/container";
+import TaskListSkeleton from "./components/TaskListSkeleton";
 
-type Props = {
-  tasks: Task[];
+type TaskPageProps = {
+  searchParams: Promise<SearchParams>;
 };
 
-export function TaskListPresentation({ tasks }: Props) {
-  // Zustand からダイアログを開くアクションを取得
-  const openDeleteDialog = useDeleteTaskDialogStore((state) => state.open);
-
-  if (tasks.length === 0) {
-    return <p className="text-muted-foreground">タスクがありません</p>;
-  }
-
+export default function TasksPage({ searchParams }: TaskPageProps) {
   return (
-    <ul className="space-y-3">
-      {tasks.map((task) => (
-        <li
-          key={task.id}
-          className="flex items-center justify-between p-4 border rounded-lg"
-        >
-          <div>
-            <p className="font-medium">{task.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {task.status} · {task.priority}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link href={`/tasks/${task.id}/edit`}>編集</Link>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              onClick={() => openDeleteDialog(task.id, task.name)}
-            >
-              削除
-            </Button>
-          </div>
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-2xl font-bold tracking-tight">Tasks</h2>
+        <Button className="space-x-1" asChild>
+          <Link href="/tasks/create">
+            <span>Create</span> <Plus size={18} />
+          </Link>
+        </Button>
+      </div>
+      <Suspense fallback={<TaskListSkeleton />}>
+        <TaskFilters />
+        <TaskList searchParams={searchParams} />
+      </Suspense>
+      {/* Zustand で制御されるのでどこに置いてもよい */}
+      <DeleteTaskDialog />
+    </div>
   );
 }
 ```
 
-`DeleteTaskDialog` を `page.tsx` に常設します：
-
-```tsx
-// app/(authed)/tasks/page.tsx に追加
-import { DeleteTaskDialog } from "./components/DeleteTaskDialog";
-
-// ... JSX の最後に追加 ...
-<DeleteTaskDialog />  {/* Zustand で制御されるのでどこに置いてもOK */}
-```
+> NOTE
+> `TaskListSkeleton` は完成系からコピーしてください。`TaskList`（container）に `searchParams`（`Promise`）をそのまま渡します。
 
 ---
 
-## 8-12. 動作確認
+## 8-8. 動作確認
 
 ```bash
 pnpm dev
 ```
 
-1. `/tasks` にアクセス
-2. 検索ボックスにキーワードを入力 → URL が `?name=キーワード` に変化することを確認
-3. ステータスを選択 → URL に `&status=todo` などが追加されることを確認
-4. ページをリロード → フィルタが保持されていることを確認
-5. 削除ボタンをクリック → ダイアログが開くことを確認
-6. 「削除する」をクリック → タスクが削除されてダイアログが閉じることを確認
+1. `/tasks` で一覧が表示される
+2. 検索ボックス入力 → URL が `?name=...` に変化（500ms デバウンス）
+3. ステータス / 優先度で絞り込み → URL に反映、リロードで保持
+4. 「Create」でタスク作成 → 一覧が**即更新**（第 07 章のキャッシュ無効化）
+5. 行のメニュー → Delete → ダイアログ → 削除で一覧が即更新
 
 > TRY
-> - ブラウザの「戻る」ボタンを使って、前のフィルタ状態に戻れるか試しましょう
-> - URL に手動でクエリパラメータを入力（例: `?status=done`）して、フィルタが適用されるか確認しましょう
+> - ブラウザの「戻る」で前のフィルタ状態に戻れるか確認
+> - URL に直接 `?status=completed` を入力して反映されるか確認
 
 ---
 
 ## まとめと次のステップ
 
-この章では以下を学びました：
+- nuqs でフィルタを URL に同期し、`searchParamsParsers` を Server/Client で共有する
+- `searchParamsCache.parse` で Server Component が URL から型安全にデータ取得する
+- `NuqsAdapter` の `shallow: false` で URL 変更時に Server Component が再実行される
+- Zustand で削除ダイアログの状態をコンポーネント間共有する
 
-- nuqs でフィルタ条件を URL クエリパラメータと同期させる
-- `searchParamsParsers` を1か所で定義して Server / Client で共有する
-- `shallow={false}` で URL 変更時に Server Component を再実行させる
-- Zustand でコンポーネント間のクライアント状態（削除ダイアログ）を管理する
-
-次の第 09 章では **ダッシュボード統計の表示** と `pnpm start` による本番起動を完成させます。
+次の第 09 章では **ダッシュボード統計**と**本番ビルド**で仕上げます。
 
 → [第 09 章：仕上げ：Dashboard + デプロイ準備](./09-finishing.md)
 
 ---
 
 ## 完成イメージ
-
-この章を完了すると、画面はおおむね以下のようになります。
 
 ![タスク一覧（フィルタ適用時）](../assets/08-tasks-filter.png)
 ![削除確認ダイアログ](../assets/08-delete.png)

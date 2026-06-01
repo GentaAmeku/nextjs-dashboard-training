@@ -323,27 +323,26 @@ export const config = {
 
 ---
 
-## 6-9. `AuthGate` と認証レイアウトを完成させる
+## 6-9. `AuthGate` を認証レイアウトに追記する
 
-この章では `AuthGate` による認証チェックに集中します。`AppSidebar` / `AppHeader` / `PageContainer` などのレイアウトコンポーネントは **第 09 章（仕上げ）** で実装して組み込みます。
+第 03 章で作った `app/(authed)/layout.tsx`（共通シェル）に、**DB セッションを検証する `AuthGate` を追記**します。シェル（サイドバー・ヘッダー）は即時表示し、認証が必要なページ本体だけを `Suspense` でストリーミングします。
 
-```typescript
-// app/(authed)/layout.tsx（AuthGate のみ）
+```tsx
+// app/(authed)/layout.tsx（第 03 章のシェルに AuthGate を追記）
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { auth } from "@/lib/auth";
+import AppHeader from "./components/AppHeader";
+import AppSidebar from "./components/AppSidebar";
+import PageContainer from "./components/PageContainer";
 
-// DB でセッションを確認する（Node.js RSC）
+// DB でセッションを確認する（Node.js RSC）。
+// リクエストスコープの値（ヘッダー）を読むので絶対にキャッシュしない。
 async function AuthGate({ children }: { children: React.ReactNode }) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) {
-    redirect("/login");
-  }
-
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) redirect("/login");
   return <>{children}</>;
 }
 
@@ -353,18 +352,139 @@ export default function AuthedLayout({
   children: React.ReactNode;
 }) {
   return (
-    <Suspense>
-      <AuthGate>{children}</AuthGate>
-    </Suspense>
+    <SidebarProvider>
+      <AppSidebar />
+      <main className="w-full">
+        <AppHeader />
+        <PageContainer>
+          {/* シェルは即時表示し、認証が要るページ本体だけをストリーミングする */}
+          <Suspense>
+            <AuthGate>{children}</AuthGate>
+          </Suspense>
+        </PageContainer>
+      </main>
+    </SidebarProvider>
   );
 }
 ```
 
 > NOTE
 > `auth.api.getSession({ headers: await headers() })` は**絶対にキャッシュしない**でください。
-> リクエストスコープの値（ヘッダー）をキャッシュすると、別のユーザーのセッションが混入するセキュリティリスクがあります。
+> リクエストスコープの値（ヘッダー）をキャッシュすると、別ユーザーのセッションが混入するリスクがあります。
+
+---
+
+## 6-9b. `AppSidebar` にユーザー情報とログアウトを追加する
+
+認証ができたので、第 03 章で組み込んだ `AppSidebar`（ナビのみ）を**育てて**、ログイン中のユーザー情報とログアウトボタンを表示します。
+
+> [!TIP]
+> **マークアップは完成系からコピーして OK です。** ここで理解したいのは `useSession`（現在のユーザー取得）と `signOut`（ログアウト）の使い方です。
 >
-> サイドバー・ヘッダー・ページコンテナは **第 09 章** で追加します。今は `AuthGate` で children を包むだけで OK です。
+> ```bash
+> git show answer/main:app/\(authed\)/components/AppSidebar/index.tsx
+> ```
+
+第 03 章の `AppSidebar` に `SidebarFooter`（ユーザー情報＋ログアウト）を追記すると、完成形は次のようになります。
+
+```tsx
+// app/(authed)/components/AppSidebar/index.tsx（ユーザー情報・ログアウトを追記）
+"use client";
+
+import { LogOut, User } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
+import { signOut, useSession } from "@/lib/auth-client";
+import { items } from "./data";
+
+export default function AppSidebar() {
+  // 現在ログイン中のユーザーを取得（Client Component）
+  const { data: session } = useSession();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut({
+      fetchOptions: { onSuccess: () => router.push("/login") },
+    });
+  };
+
+  return (
+    <Sidebar>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>General</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {items.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <Link href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      {/* ↓ ここから追記：ユーザー情報＋ログアウト */}
+      <SidebarFooter className="border-t p-3">
+        <div className="flex items-center gap-3 overflow-hidden">
+          {session?.user.image ? (
+            <Image
+              src={session.user.image}
+              alt={session.user.name ?? "User"}
+              width={32}
+              height={32}
+              className="size-8 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
+              <User className="size-4 text-muted-foreground" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">
+              {session?.user.name ?? ""}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
+              {session?.user.email ?? ""}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={handleSignOut}
+            aria-label="Sign out"
+          >
+            <LogOut className="size-4" />
+          </Button>
+        </div>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
+```
+
+> NOTE
+> ユーザーアバターに `next/image` を使うため、外部画像ホスト（`lh3.googleusercontent.com`）を `next.config.ts` の `images.remotePatterns` に許可する必要があります。**このリポジトリの `next.config.ts` には既に設定済み**です。
 
 ---
 
@@ -381,25 +501,25 @@ export default function AuthedLayout({
 
 ```tsx
 // app/login/components/GoogleSignInButton.tsx
-'use client';
+"use client";
 
-import { signIn } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
+import { signIn } from "@/lib/auth-client";
 
 export function GoogleSignInButton() {
+  const handleSignIn = async () => {
+    await signIn.social({ provider: "google", callbackURL: "/" });
+  };
+
   return (
     <Button
-      onClick={() =>
-        signIn.social({
-          provider: "google",
-          callbackURL: "/",  // ログイン成功後のリダイレクト先
-        })
-      }
+      type="button"
       variant="outline"
-      className="w-full gap-2"
+      className="w-full gap-3"
+      onClick={handleSignIn}
     >
-      {/* Google のロゴ（SVG）は完成形コードを参照 */}
-      Google でログイン
+      {/* Google ロゴ SVG は完成系をそのままコピー（git show answer/main:...） */}
+      Sign in with Google
     </Button>
   );
 }
@@ -407,16 +527,22 @@ export function GoogleSignInButton() {
 
 ```tsx
 // app/login/page.tsx
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { GoogleSignInButton } from "./components/GoogleSignInButton";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <Card className="w-80">
+    <div className="flex min-h-svh items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle>ダッシュボード</CardTitle>
-          <CardDescription>Google アカウントでサインイン</CardDescription>
+          <CardTitle className="text-2xl">Welcome back</CardTitle>
+          <CardDescription>Sign in to your account to continue</CardDescription>
         </CardHeader>
         <CardContent>
           <GoogleSignInButton />

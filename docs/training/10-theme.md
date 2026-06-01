@@ -46,7 +46,7 @@
 | テーマ管理 | `next-themes` | `components/ThemeProvider.tsx` |
 | テーマ定義 | `THEMES` 定数 | `lib/constants/themes.ts` |
 | 色の切り替え | CSS 変数 | `app/globals.css` |
-| 切り替えボタン | `ToggleThemeButton` | `components/AppHeader/` |
+| 切り替えボタン | `ToggleThemeButton` | `app/(authed)/components/AppHeader/` |
 
 ---
 
@@ -164,14 +164,9 @@ export const THEME_IDS = THEMES.map((t) => t.id);
 
 ## 10-5. ハンズオン：テーマ切り替えを実装する
 
-### Step 1：`ThemeProvider` を作る
+### Step 1：`ThemeProvider` を確認する
 
-`components/ThemeProvider.tsx` を作成します。
-
-```bash
-mkdir -p components
-touch components/ThemeProvider.tsx
-```
+`components/ThemeProvider.tsx` は**同梱済み**です（アプリ全体に関わるプロバイダなので、例外的に top-level の `components/` に置きます）。`"use client"` をここに閉じ込めることで `layout.tsx` を Server Component のまま保てる、という意図を読み取りましょう。
 
 ```tsx
 // components/ThemeProvider.tsx
@@ -195,12 +190,9 @@ export function ThemeProvider({
 > `"use client"` は Server Component に書けないため、ラッパーで分離しています。
 > このパターンは next-themes の公式ドキュメントでも推奨されています。
 
-### Step 2：`THEMES` 定数を作る
+### Step 2：`THEMES` 定数を確認する
 
-```bash
-mkdir -p lib/constants
-touch lib/constants/themes.ts
-```
+`lib/constants/themes.ts` は**同梱済み**です。新しいテーマの追加が「この定数への 1 行追加」で済む設計を確認しましょう。
 
 ```typescript
 // lib/constants/themes.ts
@@ -221,6 +213,8 @@ export const THEME_IDS = THEMES.map((t) => t.id);
 ```
 
 ### Step 3：`layout.tsx` に `ThemeProvider` を追加する
+
+第 08 章で追加した `NuqsAdapter` の**外側**を `ThemeProvider` で包みます（完成形は `ThemeProvider > NuqsAdapter > children` の入れ子）。
 
 ```tsx
 // app/layout.tsx（追加する部分のみ）
@@ -253,7 +247,7 @@ export default function RootLayout({ children }) {
 }
 ```
 
-### Step 4：`ToggleThemeButton` を作る
+### Step 4：`ToggleThemeButton` を確認する
 
 > [!TIP]
 > **`ToggleThemeButton` の JSX（ドロップダウンのマークアップ）はリポジトリからコピーして進めて OK です。**
@@ -261,16 +255,13 @@ export default function RootLayout({ children }) {
 > 自分でデザインを変えたい場合は自由に書き換えてください。
 >
 > ```bash
-> git show answer/main:components/AppHeader/components/ToggleThemeButton/index.tsx
+> git show answer/main:app/\(authed\)/components/AppHeader/components/ToggleThemeButton/index.tsx
 > ```
 
-```bash
-mkdir -p components/AppHeader/components/ToggleThemeButton
-touch components/AppHeader/components/ToggleThemeButton/index.tsx
-```
+`ToggleThemeButton` は**同梱済み**です（`app/(authed)/components/AppHeader/components/ToggleThemeButton/`）。まだヘッダーに配線されていないので、中身（`useTheme` と `THEMES` の連携）を読み、次の Step 5 で `AppHeader` に組み込みます。
 
 ```tsx
-// components/AppHeader/components/ToggleThemeButton/index.tsx
+// app/(authed)/components/AppHeader/components/ToggleThemeButton/index.tsx
 "use client";
 
 import { useTheme } from "next-themes";
@@ -315,10 +306,12 @@ export default function ToggleThemeButton() {
 }
 ```
 
-### Step 5：`AppHeader` に組み込む
+### Step 5：`AppHeader` に `ToggleThemeButton` を配線する
+
+第 03 章のヘッダー（`SidebarTrigger` のみ）に `ToggleThemeButton` を**追記**します。
 
 ```tsx
-// components/AppHeader/index.tsx
+// app/(authed)/components/AppHeader/index.tsx
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import ToggleThemeButton from "./components/ToggleThemeButton";
 

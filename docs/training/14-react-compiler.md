@@ -128,13 +128,12 @@ ls .next/ | grep turbopack
 | 機能                 | 状態（2026 年時点）             |
 | -------------------- | ------------------------------- |
 | `pnpm dev`（開発）   | Turbopack がデフォルトで有効    |
-| `pnpm build`（本番） | webpack が使われる              |
+| `pnpm build`（本番） | Turbopack（Next.js 16 既定）    |
 | HMR（Hot Reload）    | Turbopack で高速化              |
 | TypeScript 対応      | 完全対応                        |
 
 > NOTE
-> `pnpm build` は現時点では通常の webpack でビルドされます。
-> Turbopack でのプロダクションビルドは将来対応予定です。
+> Next.js 16 では `pnpm dev`・`pnpm build` とも Turbopack が既定のバンドラです。
 
 ---
 
@@ -194,7 +193,7 @@ pnpm start
 
 - React Compiler は `useMemo` / `useCallback` / `memo` を自動で挿入するコンパイラ
 - `reactCompiler: true` を設定するだけで有効になる
-- Turbopack は dev サーバーでデフォルト有効、本番 build は webpack
+- Turbopack は Next.js 16 で dev・build とも既定のバンドラ
 - `pnpm build` で本番ビルドが成功することを確認
 
 お疲れさまでした。全 14 章の研修を完了しました。

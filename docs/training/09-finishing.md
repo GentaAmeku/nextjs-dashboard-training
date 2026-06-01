@@ -3,93 +3,135 @@
 ## この章の目標
 
 > **CHECK**
-> - [ ] `app/(authed)/layout.tsx` にサイドバー・ヘッダーを組み込める
-> - [ ] ダッシュボードにタスクの統計情報が表示できる
-> - [ ] タスクを作成・更新・削除するとダッシュボードの統計も更新される
+> - [ ] ダッシュボードにタスク統計（総数・ステータス別・優先度別・完了率）を表示できる
+> - [ ] タスクを作成・更新・削除すると統計も更新される（キャッシュ無効化）
+> - [ ] 各統計カードが `Suspense` で個別にストリーミングされる仕組みを説明できる
 > - [ ] `pnpm build` が成功する
 > - [ ] `pnpm start` で本番サーバーが起動し画面が表示できる
 
 ---
 
-## 9-1. レイアウトを完成させる（`AppSidebar` / `AppHeader` / `PageContainer`）
+> 共通シェル（サイドバー・ヘッダー）は第 03 章で、認証（`AuthGate`・ユーザー情報・ログアウト）は第 06 章で、キャッシュ（`"use cache"` / `updateTag`）は第 07 章で完成済みです。
+> この章では残りの **ダッシュボード統計** を実装し、**本番ビルド** まで仕上げます。
 
-第 06 章（Better Auth）では `app/(authed)/layout.tsx` を最小限（`AuthGate` のみ）に保っていました。この章でサイドバーとヘッダーのコンポーネントを実装して、レイアウトを完成させます。
+---
 
-### AppSidebar を実装する
+## 9-1. 統計用の Server Actions（`app/actions/dashboard.ts`）
 
-> [!TIP]
-> **JSX（マークアップ部分）はリポジトリからコピーして進めて OK です。**
-> この章のメインは「コンポーネントの配置と layout.tsx への組み込み」の理解です。
->
-> ```bash
-> git show answer/main:app/\(authed\)/components/AppSidebar/index.tsx
-> git show answer/main:app/\(authed\)/components/AppSidebar/LogoutButton.tsx
-> ```
-
-（以降のコンポーネント実装は後続のセクションに続きます）
-
-完成したら `app/(authed)/layout.tsx` を以下のように更新します：
+ダッシュボードに表示する数値を取得する Server Actions を用意します。第 07 章で学んだ `"use cache"` と `cacheTag(CACHE_TAGS.DASHBOARD)` を付け、タスク変更時（第 07 章の `updateTasksCache()`）にまとめて無効化されるようにします。
 
 ```typescript
-// app/(authed)/layout.tsx（サイドバー・ヘッダーを追加）
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+// app/actions/dashboard.ts
+"use server";
+
+import { cacheTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache/tags";
+import { taskService } from "@/lib/db/services/task-service";
+import type { Result } from "@/lib/result";
+
+export const getTotalTaskCount = async (): Promise<Result<number>> => {
+  "use cache";
+  cacheTag(CACHE_TAGS.DASHBOARD);
+  return taskService.getTotalCount();
+};
+
+export const getStatusCounts = async (): Promise<
+  Result<Record<string, number>>
+> => {
+  "use cache";
+  cacheTag(CACHE_TAGS.DASHBOARD);
+  return taskService.getStatusCounts();
+};
+
+export const getPriorityCounts = async (): Promise<
+  Result<Record<string, number>>
+> => {
+  "use cache";
+  cacheTag(CACHE_TAGS.DASHBOARD);
+  return taskService.getPriorityCounts();
+};
+
+export const getCompletedTaskCount = async (): Promise<Result<number>> => {
+  "use cache";
+  cacheTag(CACHE_TAGS.DASHBOARD);
+  return taskService.getCompletedCount();
+};
+```
+
+> NOTE
+> 統計を**4 つに分けて**取得しているのは、次の `TaskStatistics` で**カードごとに `Suspense`** を張り、遅いカードが他のカードの表示をブロックしないようにするためです。
+
+---
+
+## 9-2. 統計コンポーネントを作る
+
+ダッシュボードの統計は、`TaskStatistics`（4 枚のカードを並べる器）＋各カード（`TotalTaskCount` / `StatusCounts` / `PriorityCounts` / `CompletionRate`）で構成します。各カードは **async な Server Component** で、対応する Server Action を呼びます。
+
+> [!TIP]
+> **カードのマークアップは完成系からコピーして OK です。** ここで理解したいのは「カードごとに `Suspense` を張って個別にストリーミングする」構成です。
+>
+> ```bash
+> git show answer/main:app/\(authed\)/components/TaskStatistics/index.tsx
+> git show answer/main:app/\(authed\)/components/TaskStatistics/TotalTaskCount.tsx
+> git show answer/main:app/\(authed\)/components/TaskStatistics/StatusCounts.tsx
+> git show answer/main:app/\(authed\)/components/TaskStatistics/PriorityCounts.tsx
+> git show answer/main:app/\(authed\)/components/TaskStatistics/CompletionRate.tsx
+> ```
+
+### 器：`TaskStatistics`
+
+```tsx
+// app/(authed)/components/TaskStatistics/index.tsx
 import { Suspense } from "react";
-import { auth } from "@/lib/auth";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "./components/AppSidebar";
-import { AppHeader } from "./components/AppHeader";
-import { PageContainer } from "./components/PageContainer";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import CompletionRate from "./CompletionRate";
+import PriorityCounts from "./PriorityCounts";
+import StatusCounts from "./StatusCounts";
+import TotalTaskCount from "./TotalTaskCount";
 
-async function AuthGate({ children }: { children: React.ReactNode }) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) {
-    redirect("/login");
-  }
-
-  return <>{children}</>;
+function CardSkeleton() {
+  return (
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-6 w-24" />
+        <Skeleton className="h-4 w-32 mt-2" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-10 w-16" />
+      </CardContent>
+    </Card>
+  );
 }
 
-export default function AuthedLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function TaskStatistics() {
   return (
-    <Suspense>
-      <AuthGate>
-        <SidebarProvider>
-          <AppSidebar />
-          <div className="flex flex-col flex-1 overflow-hidden">
-            <AppHeader />
-            <PageContainer>{children}</PageContainer>
-          </div>
-        </SidebarProvider>
-      </AuthGate>
-    </Suspense>
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* カードごとに Suspense → 取得が速いカードから順に表示される */}
+      <Suspense fallback={<CardSkeleton />}>
+        <TotalTaskCount />
+      </Suspense>
+      <Suspense fallback={<CardSkeleton />}>
+        <StatusCounts />
+      </Suspense>
+      <Suspense fallback={<CardSkeleton />}>
+        <PriorityCounts />
+      </Suspense>
+      <Suspense fallback={<CardSkeleton />}>
+        <CompletionRate />
+      </Suspense>
+    </div>
   );
 }
 ```
 
----
+### カードの例：`TotalTaskCount`
 
-## 9-2. ダッシュボードの統計コンポーネントを作る
-
-ダッシュボードには「タスクの総数」「ステータス別件数」「完了率」を表示します。
-
-```bash
-mkdir -p "app/(authed)/components/TaskStatistics"
-touch "app/(authed)/components/TaskStatistics/index.tsx"
-```
+各カードは Server Action を呼び、`isErr` でエラーを処理してから値を表示します（残り 3 つも同じ形）。
 
 ```tsx
-// app/(authed)/components/TaskStatistics/index.tsx
-import { getDashboardStats } from "@/app/actions/dashboard";
-import { isErr } from "@/lib/result";
-import { STATUS_LABELS, PRIORITY_LABELS } from "@/lib/db/schema";
+// app/(authed)/components/TaskStatistics/TotalTaskCount.tsx
+import { getTotalTaskCount } from "@/app/actions/dashboard";
 import {
   Card,
   CardContent,
@@ -97,336 +139,120 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { isErr } from "@/lib/result";
 
-export async function TaskStatistics() {
-  const result = await getDashboardStats();
+export default async function TotalTaskCount() {
+  const result = await getTotalTaskCount();
 
   if (isErr(result)) {
     return (
-      <p className="text-destructive">
-        統計の取得に失敗しました: {result.error.message}
-      </p>
+      <Card>
+        <CardHeader>
+          <CardTitle>総タスク数</CardTitle>
+          <CardDescription>すべてのタスクの合計</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-destructive text-sm">
+            エラー: {result.error.message}
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
-  const { totalCount, statusCounts, completedCount, completionRate } = result.value;
-
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {/* 総タスク数 */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardDescription>タスク総数</CardDescription>
-          <CardTitle className="text-3xl">{totalCount}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground">全タスク</p>
-        </CardContent>
-      </Card>
-
-      {/* 完了率 */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardDescription>完了率</CardDescription>
-          <CardTitle className="text-3xl">{completionRate}%</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground">
-            {completedCount} / {totalCount} 件完了
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* 未着手 */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardDescription>未着手</CardDescription>
-          <CardTitle className="text-3xl">{statusCounts.todo ?? 0}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground">todo</p>
-        </CardContent>
-      </Card>
-
-      {/* 進行中 */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardDescription>進行中</CardDescription>
-          <CardTitle className="text-3xl">
-            {statusCounts.in_progress ?? 0}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground">in progress</p>
-        </CardContent>
-      </Card>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>総タスク数</CardTitle>
+        <CardDescription>すべてのタスクの合計</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="text-3xl font-bold">{result.value}</div>
+      </CardContent>
+    </Card>
   );
 }
 ```
 
+> `StatusCounts` / `PriorityCounts` / `CompletionRate` も同じパターンです。マークアップは完成系からコピーしてください。
+
 ---
 
-## 9-2. ダッシュボードページを完成させる
+## 9-3. ダッシュボードページに組み込む
+
+第 03 章でプレースホルダにしておいた `app/(authed)/page.tsx` に `TaskStatistics` を差し込みます。
 
 ```tsx
 // app/(authed)/page.tsx
-import { Suspense } from "react";
-import { TaskStatistics } from "./components/TaskStatistics";
+import TaskStatistics from "./components/TaskStatistics";
 
-// 統計カードのスケルトン（データ取得中に表示）
-function StatisticsSkeleton() {
+export default function Home() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {[...Array(4)].map((_, i) => (
-        <div
-          // biome-ignore lint/suspicious/noArrayIndexKey: スケルトンは順序が固定
-          key={i}
-          className="h-28 rounded-xl border bg-card animate-pulse"
-        />
-      ))}
-    </div>
-  );
-}
-
-export default function DashboardPage() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">ダッシュボード</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          タスクの状況をひと目で確認できます
-        </p>
+    <div className="space-y-4">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+        <p className="text-muted-foreground">タスクの統計情報を確認できます</p>
       </div>
-
-      {/* Suspense でデータ取得中はスケルトンを表示 */}
-      <Suspense fallback={<StatisticsSkeleton />}>
-        <TaskStatistics />
-      </Suspense>
+      <TaskStatistics />
     </div>
   );
 }
-```
-
----
-
-## 9-3. サイドバーとヘッダーを整える
-
-認証済みエリアに必要なレイアウトコンポーネントを作ります。
-
-### AppSidebar
-
-```bash
-mkdir -p "app/(authed)/components/AppSidebar"
-touch "app/(authed)/components/AppSidebar/index.tsx"
-```
-
-```tsx
-// app/(authed)/components/AppSidebar/index.tsx
-import Link from "next/link";
-import { LayoutDashboard, CheckSquare } from "lucide-react";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
-import { LogoutButton } from "./LogoutButton";
-
-const navItems = [
-  { href: "/", label: "ダッシュボード", icon: LayoutDashboard },
-  { href: "/tasks", label: "タスク", icon: CheckSquare },
-];
-
-export function AppSidebar() {
-  return (
-    <Sidebar>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild>
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-
-      {/* ログアウトボタン（クライアントコンポーネント）*/}
-      <LogoutButton />
-    </Sidebar>
-  );
-}
-```
-
-```tsx
-// app/(authed)/components/AppSidebar/LogoutButton.tsx
-'use client';
-
-import { signOut } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
-
-export function LogoutButton() {
-  return (
-    <div className="p-4">
-      <Button
-        variant="ghost"
-        className="w-full justify-start gap-2"
-        onClick={() => signOut({ fetchOptions: { onSuccess: () => { window.location.href = "/login"; } } })}
-      >
-        <LogOut className="h-4 w-4" />
-        ログアウト
-      </Button>
-    </div>
-  );
-}
-```
-
-### AppHeader
-
-```bash
-mkdir -p "app/(authed)/components/AppHeader"
-touch "app/(authed)/components/AppHeader/index.tsx"
-```
-
-```tsx
-// app/(authed)/components/AppHeader/index.tsx
-import { SidebarTrigger } from "@/components/ui/sidebar";
-
-export function AppHeader() {
-  return (
-    <header className="flex h-14 items-center border-b px-4">
-      <SidebarTrigger />
-      <span className="ml-4 font-semibold text-sm">Dashboard Playground</span>
-    </header>
-  );
-}
-```
-
-### PageContainer
-
-```bash
-mkdir -p "app/(authed)/components/PageContainer"
-touch "app/(authed)/components/PageContainer/index.tsx"
-```
-
-```tsx
-// app/(authed)/components/PageContainer/index.tsx
-export function PageContainer({ children }: { children: React.ReactNode }) {
-  return (
-    <main className="flex-1 overflow-auto p-6">
-      {children}
-    </main>
-  );
-}
-```
-
----
-
-## 9-4. shadcn の Sidebar をインストールする
-
-```bash
-pnpm dlx shadcn@latest add sidebar
 ```
 
 > NOTE
-> Sidebar コンポーネントは shadcn の中でも複雑なコンポーネントです。
-> `components/ui/sidebar.tsx` が生成されるので、詳細はそのファイルを参照してください。
+> `Home` 自体は `async` ではありません。データ取得は各カード（`TotalTaskCount` など）が担い、`TaskStatistics` 内の `Suspense` でストリーミングされます。
 
 ---
 
-## 9-5. 動作確認
+## 9-4. 動作確認
 
 ```bash
 pnpm dev
 ```
 
-以下を確認します：
-
-1. `http://localhost:3000` にアクセスしてダッシュボードが表示されることを確認
-2. タスクの統計カードが表示されることを確認
-3. タスクを追加・削除するとダッシュボードの数字も変わることを確認
-4. サイドバーの「タスク」リンクから `/tasks` に移動できることを確認
-5. ログアウトボタンで `/login` に戻ることを確認
+1. `http://localhost:3000/` を開き、統計カードが表示されることを確認
+2. `/tasks` でタスクを作成・完了・削除する
+3. `/` に戻り、数字（総数・完了率など）が更新されていることを確認（第 07 章のキャッシュ無効化が効いている）
 
 > TRY
-> - `pnpm db:seed` でシードデータを投入してから統計を確認しましょう
-> - タスクを追加・完了・削除して、完了率が変化することを確認しましょう
-> - スマートフォンのサイズにブラウザを縮小して、レイアウトが崩れないか確認しましょう
+> - `pnpm db:seed` 後に統計を確認しましょう。
+> - ネットワークを遅くして（DevTools → Network → Slow）、カードが**1 枚ずつ**現れることを確認しましょう（カードごと `Suspense`）。
 
 ---
 
-## 9-6. 本番ビルドと起動
+## 9-5. 本番ビルドと起動
 
 ```bash
-# 本番用ビルド
 pnpm build
 ```
 
-ビルド結果の確認：
-
-```
-Route (app)                          Size     First Load JS
-┌ ○ /login                          xxxx kB  xxx kB
-├ ƒ /                               xxxx kB  xxx kB
-├ ƒ /tasks                          xxxx kB  xxx kB
-├ ƒ /tasks/[id]/edit                xxxx kB  xxx kB
-└ ƒ /tasks/create                   xxxx kB  xxx kB
-```
-
 ```bash
-# 本番サーバーの起動
 pnpm start
+# → http://localhost:3000 で本番モードのサーバーが起動
 ```
 
-`http://localhost:3000` で本番モードのサーバーが起動します。
+> NOTE
+> `ƒ (Dynamic)` と表示されるルートは、リクエストのたびに Server Component が実行されます。
+> `(authed)` 配下が動的になるのは、`AuthGate` が `headers()` を使うためです。
 
 ---
 
-## 9-7. 完成形の全体チェックリスト
-
-すべての機能が正しく動くか最終確認します：
+## 9-6. 完成形チェックリスト
 
 ```
 認証
-  [ ] Google ログインができる
-  [ ] ログアウトができる
-  [ ] 未ログイン状態で /tasks にアクセスすると /login にリダイレクトされる
+  [ ] Google ログイン / ログアウトができる
+  [ ] 未ログインで /tasks にアクセスすると /login にリダイレクトされる
 
 タスク CRUD
-  [ ] タスクを作成できる
-  [ ] タスク一覧が表示される
-  [ ] タスクを編集できる
-  [ ] タスクを削除できる（ダイアログが表示される）
+  [ ] 作成・一覧・編集・削除ができる（削除はダイアログ）
 
 フィルタリング
-  [ ] 名前で検索できる
-  [ ] ステータスで絞り込みできる
-  [ ] 優先度で絞り込みできる
-  [ ] URL にフィルタ条件が反映される
-  [ ] ページをリロードしてもフィルタが保持される
+  [ ] 名前 / ステータス / 優先度で絞り込め、URL に反映され、リロードで保持される
 
 ダッシュボード
-  [ ] タスク総数が表示される
-  [ ] 完了率が表示される
-  [ ] ステータス別の件数が表示される
-  [ ] タスクを変更するとダッシュボードの数字も即更新される
-
-テスト
-  [ ] pnpm test ですべてのテストが通る
-  [ ] pnpm lint でエラーが出ない
+  [ ] 総数・ステータス別・優先度別・完了率が表示される
+  [ ] タスク変更で統計が即更新される
 
 本番ビルド
   [ ] pnpm build が成功する
@@ -435,44 +261,26 @@ pnpm start
 
 ---
 
-## 9-8. お疲れさまでした
+## 9-7. お疲れさまでした
 
-この研修を通じて、以下をゼロから実装しました：
+主要機能をひととおり実装しました。次の第 10 章では、見た目の仕上げとして**テーマ切り替え**を導入します。
 
-| 機能                     | 使った技術                              |
-| ------------------------ | --------------------------------------- |
-| ルーティングとレイアウト | Next.js App Router・ルートグループ      |
-| UI コンポーネント        | Tailwind CSS v4・shadcn/ui              |
-| データベース             | Drizzle ORM・SQLite                     |
-| エラー処理               | `Result<T>` 型・AppError               |
-| バリデーション           | Zod・drizzle-zod                        |
-| フォーム送信             | Server Actions・useActionState          |
-| クライアントフォーム     | react-hook-form・zodResolver            |
-| 認証                     | Better Auth・Google OAuth               |
-| キャッシュ制御           | Cache Components・cacheTag・updateTag   |
-| URL 状態管理             | nuqs                                    |
-| クライアント状態管理     | Zustand                                 |
-| テスト                   | Vitest・:memory: SQLite・vi.mock       |
-| コード品質               | Biome・Lefthook                         |
-| 高速化                   | React Compiler・Turbopack               |
+| 機能                     | 使った技術                            |
+| ------------------------ | ------------------------------------- |
+| ルーティング・レイアウト | App Router・ルートグループ            |
+| UI                       | Tailwind CSS v4・shadcn/ui            |
+| データベース             | Drizzle ORM・SQLite                   |
+| エラー処理               | `Result<T>` 型・AppError              |
+| フォーム                 | Server Actions・useActionState・RHF   |
+| 認証                     | Better Auth・Google OAuth             |
+| キャッシュ               | Cache Components・cacheTag・updateTag |
+| URL 状態 / クライアント状態 | nuqs・Zustand                      |
 
-### 次のステップ（自主学習）
-
-このリポジトリを完成させたあと、さらに挑戦してみましょう：
-
-- **Turso + Vercel へのデプロイ**：SQLite ファイルを [Turso](https://turso.tech)（分散 SQLite サービス）に移行して、Vercel にデプロイする
-- **優先度別統計の追加**：ダッシュボードに優先度別の統計カードを追加する
-- **タスクのソート**：一覧のソート順（作成日・更新日・優先度）を切り替えられるようにする
-- **E2E テスト**：Playwright で画面の自動テストを追加する
-- **ページネーション**：タスクが増えたときのページング機能を追加する
+→ [第 10 章：テーマを導入してみよう](./10-theme.md)
 
 ---
 
 ## 完成イメージ
 
-この章を完了すると、画面はおおむね以下のようになります。
-
 ![ダッシュボード（統計カード）](../assets/09-dashboard.png)
 ![タスク行アクションメニュー](../assets/09-tasks-menu.png)
-
-→ [第 10 章：テーマを導入してみよう](./10-theme.md)

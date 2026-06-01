@@ -169,7 +169,7 @@ describe("taskService", () => {
 
     it("無効なクエリではバリデーションエラーを返す", async () => {
       const result = await taskService.getTasksByQuery({
-        status: "invalid_status",
+        status: "invalid_status" as never,
       });
       expectErrType(result, "VALIDATION_ERROR");
       expect(taskRepository.taskRepository.getByQuery).not.toHaveBeenCalled();

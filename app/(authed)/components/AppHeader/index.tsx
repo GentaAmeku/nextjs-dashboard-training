@@ -1,13 +1,10 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import ToggleThemeButton from "./components/ToggleThemeButton";
 
 export default function AppHeader() {
   return (
     <div className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
       <SidebarTrigger variant="outline" />
-      <div className="ml-auto">
-        <ToggleThemeButton />
-      </div>
+      {/* 第 10 章でテーマ切替ボタン（ToggleThemeButton）をここに配線します */}
     </div>
   );
 }

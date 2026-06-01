@@ -197,21 +197,15 @@ cn("text-sm", "text-lg") // → "text-lg"
 
 ## 2-5. ハンズオン：shadcn/ui のセットアップ
 
-### Step 1：shadcn を初期化する
+### Step 1：shadcn の設定（同梱済み）を確認する
 
-```bash
-pnpm dlx shadcn@latest init
-```
+`components.json` はリポジトリに**同梱済み**です。`pnpm dlx shadcn init` は実行しないでください（既存の設定や `globals.css` を上書きしてしまいます）。主な設定を確認しましょう。
 
-プロンプトへの回答例：
+- `"style": "radix-sera"` / `"baseColor": "taupe"` / `"iconLibrary": "lucide"`
+- `"rsc": true`（Server Components 対応のコードを生成）
+- `aliases`：`@/components/ui` などの短いパスで import できる
 
-```
-✔ Which style would you like to use? → Default
-✔ Which color would you like to use as base color? → Slate
-✔ Would you like to use CSS variables for colors? → Yes
-```
-
-`components.json` と `app/globals.css`（テーマ変数入り）が生成されます。
+基本的な UI 部品（`button` / `card` など）も `components/ui/` に同梱済みです。新しい部品が必要になったら、次の Step の要領で追加します。
 
 ### Step 2：`lib/utils.ts` の確認
 

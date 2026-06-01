@@ -111,69 +111,56 @@ touch lib/validation/__tests__/task-validation.test.ts
 import { describe, expect, it } from "vitest";
 import { validateTaskData, validateTaskUpdate } from "../task-validation";
 
+// validateTaskData / validateTaskUpdate は Result を返す（ok / value / error）
 describe("validateTaskData（タスク作成バリデーション）", () => {
-  it("正しいデータはバリデーションを通過する", () => {
+  it("正しいデータは通過する（ok: true）", () => {
     const result = validateTaskData({
-      name: "テストタスク",
-      status: "todo",
+      name: "Test task",
+      status: "pending",
       priority: "medium",
     });
-    expect(result.success).toBe(true);
+    expect(result.ok).toBe(true);
   });
 
-  it("name が空の場合は失敗する", () => {
+  it("name が空なら VALIDATION_ERROR", () => {
     const result = validateTaskData({
       name: "",
-      status: "todo",
+      status: "pending",
       priority: "medium",
     });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain("name");
-    }
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.type).toBe("VALIDATION_ERROR");
   });
 
-  it("name が 100 文字を超える場合は失敗する", () => {
+  it("name が 200 文字を超えると失敗する", () => {
     const result = validateTaskData({
-      name: "a".repeat(101),
-      status: "todo",
+      name: "a".repeat(201),
+      status: "pending",
       priority: "medium",
     });
-    expect(result.success).toBe(false);
+    expect(result.ok).toBe(false);
   });
 
-  it("status が無効な値の場合は失敗する", () => {
+  it("status が無効な値なら失敗する", () => {
     const result = validateTaskData({
-      name: "テスト",
-      status: "invalid_status", // ← enum 違反
+      name: "Test",
+      status: "invalid_status" as never, // enum 違反
       priority: "medium",
     });
-    expect(result.success).toBe(false);
-  });
-
-  it("description なしでも通過する", () => {
-    const result = validateTaskData({
-      name: "テスト",
-      status: "todo",
-      priority: "medium",
-      // description は省略可
-    });
-    expect(result.success).toBe(true);
+    expect(result.ok).toBe(false);
   });
 });
 
 describe("validateTaskUpdate（タスク更新バリデーション）", () => {
-  it("すべてのフィールドが任意（空でも通過）", () => {
+  it("空オブジェクトでも通過する（すべて任意）", () => {
     const result = validateTaskUpdate({});
-    expect(result.success).toBe(true);
+    expect(result.ok).toBe(true);
   });
 
-  it("一部のフィールドだけ更新できる", () => {
-    const result = validateTaskUpdate({ status: "done" });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.status).toBe("done");
-    }
+  it("一部フィールドだけ更新できる", () => {
+    const result = validateTaskUpdate({ status: "completed" });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.status).toBe("completed");
   });
 });
 ```

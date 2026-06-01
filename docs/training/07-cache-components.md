@@ -4,409 +4,167 @@
 
 > **CHECK**
 > - [ ] `"use cache"` の仕組みを説明できる
-> - [ ] `cacheTag` と `updateTag` の使い方を説明できる
-> - [ ] `CACHE_TAGS` 定数を定義できる
-> - [ ] タスク作成・更新・削除後に一覧ページが自動で更新される
+> - [ ] `cacheTag` と `updateTag` の役割を説明できる
+> - [ ] 取得系（`getTasks` / `getTaskById`）に `"use cache"` を付けられる
+> - [ ] 作成・更新・削除後に `updateTag` でキャッシュを無効化できる
 > - [ ] `auth.api.getSession()` をキャッシュしてはいけない理由を説明できる
 
 ---
 
 > [!IMPORTANT]
-> **【コピー OK】`lib/cache/tags.ts` はリポジトリに同梱済みです。**
-> 本章では仕組みを理解しながらコピーで進めて構いません。
-> 差分が出たら回答リポジトリを正として確認してください。
+> **`lib/cache/tags.ts` はリポジトリに同梱済みです。** 仕組みを理解しながら使ってください。
 >
 > ```bash
-> git show answer/main:lib/cache/tags.ts   # キャッシュタグ定数
+> git show answer/main:lib/cache/tags.ts
 > ```
 
 ---
 
-## 7-1. Next.js のキャッシュの仕組み
+## 7-1. なぜキャッシュ制御が必要か
 
-Next.js は高速化のためにレスポンスをキャッシュします。しかしキャッシュのせいで「データを更新したのに画面に反映されない」という問題が起きることがあります。
-
-このプロジェクトでは **Cache Components**（`"use cache"` ディレクティブ）を使って、**キャッシュの対象と更新のタイミングを明示的に制御**します。
+Next.js は高速化のためレスポンスをキャッシュしますが、放置すると「更新したのに画面が古いまま」になります。**Cache Components**（`"use cache"`）で、**何をキャッシュし・いつ無効化するか**を明示的に制御します。
 
 ```mermaid
 flowchart TD
-    Call["関数を呼び出す\n（'use cache' 付き）"]
-    Hit{"キャッシュが\n有効？"}
-    ReturnCache["キャッシュから返す\n（DB アクセスなし・高速）"]
-    FetchDB["DB からデータを取得"]
-    SaveCache["キャッシュに保存\n（cacheTag でタグ付け）"]
-    Invalidate["updateTag('tasks') を呼ぶ\nそのタグのキャッシュが無効化される"]
-
+    Call["関数呼び出し（'use cache'）"]
+    Hit{"キャッシュ有効？"}
+    ReturnCache["キャッシュから返す（高速）"]
+    FetchDB["DB から取得 → 保存（cacheTag）"]
+    Invalidate["updateTag('tasks') で無効化"]
     Call --> Hit
-    Hit -->|"YES（キャッシュあり）"| ReturnCache
-    Hit -->|"NO（初回 or 無効化後）"| FetchDB
-    FetchDB --> SaveCache --> ReturnCache
-    Invalidate -.->|"次の呼び出しが NO になる"| Hit
+    Hit -->|"YES"| ReturnCache
+    Hit -->|"NO（初回 / 無効化後）"| FetchDB --> ReturnCache
+    Invalidate -.->|"次回を NO にする"| Hit
 ```
 
 ---
 
-## 7-2. `"use cache"` ディレクティブ
+## 7-2. `"use cache"` / `cacheTag` / `updateTag`
 
-`"use cache"` はファイル先頭か関数の先頭に書くディレクティブです。
-
-```typescript
-// ファイル全体をキャッシュ対象にする
-'use cache';
-
-export async function getTasks() {
-  // この関数は最初の呼び出し結果をキャッシュする
-  return db.select().from(tasks);
-}
-```
+| 関数             | 役割                             |
+| ---------------- | -------------------------------- |
+| `"use cache"`    | その関数の結果をキャッシュする   |
+| `cacheTag(tag)`  | キャッシュにタグを付ける         |
+| `updateTag(tag)` | そのタグのキャッシュを無効化する |
 
 ```typescript
-// 特定の関数だけキャッシュする
-export async function getTasks() {
-  'use cache'; // 関数の先頭に書く
+// 読み取り：タグを付けてキャッシュ
+export const getTasks = async (query) => {
+  "use cache";
   cacheTag(CACHE_TAGS.TASKS);
-  return db.select().from(tasks);
-}
+  return taskService.getTasksByQuery(query);
+};
+
+// 書き込み：無効化（Server Action 内で呼ぶ）
+updateTag(CACHE_TAGS.TASKS);
 ```
 
 > NOTE
-> `"use cache"` は Next.js 16 の実験的機能です（`next.config.ts` の `cacheComponents: true` で有効化）。
-> React の `"use client"` / `"use server"` と同じ「ディレクティブ」の仕組みです。
+> `"use cache"` は Next.js 16 の機能で、`next.config.ts` の `cacheComponents: true` で有効化されています（同梱済み）。
 
 ---
 
-## 7-3. `cacheTag` と `updateTag`
+## 7-3. キャッシュタグ定数（`lib/cache/tags.ts`）
 
-| 関数              | 役割                                           |
-| ----------------- | ---------------------------------------------- |
-| `cacheTag(tag)`   | キャッシュに名前（タグ）をつける               |
-| `updateTag(tag)`  | そのタグのキャッシュを無効化する               |
-
-```typescript
-// 読み取り：キャッシュにタグをつける
-export async function getTasks() {
-  'use cache';
-  cacheTag(CACHE_TAGS.TASKS);  // "tasks" タグをつける
-  return taskRepository.getAll();
-}
-
-// 書き込み：キャッシュを無効化する
-export async function createTask(...) {
-  'use server';
-  // ... DB に保存 ...
-  updateTag(CACHE_TAGS.TASKS);     // "tasks" タグのキャッシュを無効化
-  updateTag(CACHE_TAGS.DASHBOARD); // "dashboard" タグのキャッシュも無効化
-  redirect("/tasks");
-}
-```
-
----
-
-## 7-4. キャッシュタグ定数を定義する
-
-```bash
-mkdir -p lib/cache
-touch lib/cache/tags.ts
-```
+タグ文字列のハードコードは typo の元なので定数化します（**同梱済み**）。
 
 ```typescript
 // lib/cache/tags.ts
-// キャッシュタグを一元管理する定数
 export const CACHE_TAGS = {
   TASKS: "tasks",
   DASHBOARD: "dashboard",
 } as const;
-```
 
-> NOTE
-> タグ文字列をハードコードすると typo のリスクがあります。
-> 定数として一か所で管理することで、補完が効き typo も防げます。
+export type CacheTag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS];
+```
 
 ---
 
-## 7-5. Server Actions にキャッシュ更新を追加する
+## 7-4. Server Actions にキャッシュを追加する
 
-第 05 章で作った `tasks.ts` を更新して、キャッシュの無効化を追加します。
+第 05 章で作った `actions/tasks.ts` に、**取得系（キャッシュあり）**と**無効化ヘルパー**を追記し、ミューテーションから無効化を呼びます。
 
 ```typescript
-// app/(authed)/tasks/actions/tasks.ts
-'use server';
+// app/(authed)/tasks/actions/tasks.ts（第 05 章に追記）
+"use server";
 
 import { cacheTag, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { isErr } from "@/lib/result";
-import type { Result } from "@/lib/result";
-import type { Task } from "@/lib/db/schema";
-import { taskService } from "@/lib/db/services/task-service";
-import { createTaskSchema } from "@/lib/db/schema";
-import { zodErrorToAppError } from "@/lib/errors";
 import { CACHE_TAGS } from "@/lib/cache/tags";
+import { createTaskSchema, type Task } from "@/lib/db/schema";
+import { taskService } from "@/lib/db/services/task-service";
+import type { TaskQuery } from "@/lib/validation/task-query-validation";
+import { validationError, zodErrorToAppError } from "@/lib/errors";
+import { err, isErr, type Result } from "@/lib/result";
 
-// ── タスク取得（キャッシュあり）──────────────────────────────────
-
-export async function getTasks(query?: {
-  name?: string;
-  status?: string;
-  priority?: string;
-}): Promise<Result<Task[]>> {
-  'use cache';               // この関数の結果をキャッシュする
-  cacheTag(CACHE_TAGS.TASKS); // "tasks" タグをつける
-
-  return taskService.getTasksByQuery(query ?? {});
-}
-
-export async function getTaskById(id: number): Promise<Result<Task>> {
-  'use cache';
-  cacheTag(CACHE_TAGS.TASKS);
-
-  return taskService.getTaskById(id);
-}
-
-// ── キャッシュ無効化ヘルパー ──────────────────────────────────────
-
-// タスク変更後に呼ぶ：タスク一覧とダッシュボードのキャッシュを無効化
-function updateTasksCache() {
+// タスク変更後に呼ぶ：一覧とダッシュボードのキャッシュを無効化
+const updateTasksCache = () => {
   updateTag(CACHE_TAGS.TASKS);
   updateTag(CACHE_TAGS.DASHBOARD);
-}
-
-// ── タスク作成 ────────────────────────────────────────────────────
-
-export async function createTask(
-  _prevState: Result<Task> | null,
-  formData: FormData,
-): Promise<Result<Task>> {
-  const rawData = Object.fromEntries(formData.entries());
-  const parseResult = createTaskSchema.safeParse(rawData);
-
-  if (!parseResult.success) {
-    return { ok: false, error: zodErrorToAppError(parseResult.error) };
-  }
-
-  const result = await taskService.createTask(parseResult.data);
-  if (isErr(result)) return result;
-
-  // キャッシュを無効化してから一覧へ戻る
-  updateTasksCache();
-  redirect("/tasks");
-}
-
-// ── タスク更新 ────────────────────────────────────────────────────
-
-export async function updateTask(
-  _prevState: Result<Task> | null,
-  formData: FormData,
-): Promise<Result<Task>> {
-  const id = Number(formData.get("id"));
-  const rawData = Object.fromEntries(formData.entries());
-
-  const result = await taskService.updateTask(id, rawData);
-  if (isErr(result)) return result;
-
-  updateTasksCache();
-  redirect("/tasks");
-}
-
-// ── タスク削除 ────────────────────────────────────────────────────
-
-export async function deleteTask(id: number): Promise<Result<void>> {
-  const result = await taskService.deleteTask(id);
-  if (isErr(result)) return result;
-
-  updateTasksCache();
-  redirect("/tasks");
-}
-```
-
----
-
-## 7-6. ダッシュボードの統計もキャッシュ管理する
-
-ダッシュボード用の Server Actions も同様に定義します。
-
-```bash
-touch "app/actions/dashboard.ts"
-```
-
-```typescript
-// app/actions/dashboard.ts
-'use server';
-
-import { cacheTag } from "next/cache";
-import { isErr } from "@/lib/result";
-import type { Result } from "@/lib/result";
-import type { Status } from "@/lib/db/schema";
-import { taskRepository } from "@/lib/db/repositories/task-repository";
-import { CACHE_TAGS } from "@/lib/cache/tags";
-
-// 統計データの型
-export type DashboardStats = {
-  totalCount: number;
-  statusCounts: Record<Status, number>;
-  completedCount: number;
-  completionRate: number;
 };
 
-export async function getDashboardStats(): Promise<Result<DashboardStats>> {
-  'use cache';
-  cacheTag(CACHE_TAGS.DASHBOARD); // "dashboard" タグをつける
+// 一覧取得（キャッシュあり）
+export const getTasks = async (query: TaskQuery = {}) => {
+  "use cache";
+  cacheTag(CACHE_TAGS.TASKS);
+  return taskService.getTasksByQuery(query);
+};
 
-  const totalResult = await taskRepository.getTotalCount();
-  const statusResult = await taskRepository.getStatusCounts();
-  const completedResult = await taskRepository.getCompletedCount();
+// 単件取得（キャッシュあり）
+export const getTaskById = async (id: number): Promise<Result<Task>> => {
+  "use cache";
+  cacheTag(CACHE_TAGS.TASKS);
+  return taskService.getTask(id);
+};
 
-  if (isErr(totalResult)) return totalResult;
-  if (isErr(statusResult)) return statusResult;
-  if (isErr(completedResult)) return completedResult;
-
-  const total = totalResult.value;
-  const completionRate = total > 0
-    ? Math.round((completedResult.value / total) * 100)
-    : 0;
-
-  return {
-    ok: true,
-    value: {
-      totalCount: total,
-      statusCounts: statusResult.value,
-      completedCount: completedResult.value,
-      completionRate,
-    },
-  };
-}
+// 第 05 章の createTask / updateTask / deleteTask に updateTasksCache() を追加する：
+//   const result = await taskService.createTask(parseResult.data);
+//   if (isErr(result)) return result;
+//   updateTasksCache();      // ← 追記
+//   redirect("/tasks");
+// deleteTask も同様（削除成功後に updateTasksCache() を呼ぶ）
 ```
-
----
-
-## 7-7. タスク一覧ページでキャッシュを使う
-
-```tsx
-// app/(authed)/tasks/page.tsx を更新
-import { getTasks } from "./actions/tasks";
-import { isErr } from "@/lib/result";
-import { Suspense } from "react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-
-// コンテナ：データ取得を担う（Suspense の中に入れる）
-async function TaskListContainer({
-  searchParams,
-}: {
-  searchParams: { name?: string; status?: string; priority?: string };
-}) {
-  const result = await getTasks(searchParams);
-
-  if (isErr(result)) {
-    return <p className="text-destructive">エラー: {result.error.message}</p>;
-  }
-
-  const tasks = result.value;
-
-  return (
-    <ul className="space-y-3">
-      {tasks.map((task) => (
-        <li
-          key={task.id}
-          className="flex items-center justify-between p-4 border rounded-lg"
-        >
-          <div>
-            <p className="font-medium">{task.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {task.status} · {task.priority}
-            </p>
-          </div>
-          <Link
-            href={`/tasks/${task.id}/edit`}
-            className="text-sm text-primary hover:underline"
-          >
-            編集
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-export default async function TasksPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ name?: string; status?: string; priority?: string }>;
-}) {
-  const params = await searchParams;
-
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">タスク一覧</h1>
-        <Button asChild>
-          <Link href="/tasks/create">タスクを作成</Link>
-        </Button>
-      </div>
-
-      {/* Suspense でローディング中の表示を制御 */}
-      <Suspense fallback={<p className="text-muted-foreground">読み込み中...</p>}>
-        <TaskListContainer searchParams={params} />
-      </Suspense>
-    </div>
-  );
-}
-```
-
----
-
-## 7-8. 動作確認
-
-```bash
-pnpm dev
-```
-
-1. `/tasks` を開く
-2. `/tasks/create` でタスクを作成する
-3. `/tasks` に戻る → **新しいタスクが即座に表示されることを確認**
 
 > NOTE
-> キャッシュが更新されていない場合は、`updateTag` の呼び出しが Server Action 内にあるか確認してください。
-> `updateTag` は必ず `'use server'` のコンテキスト内で呼ぶ必要があります。
+> - `getTasks` の引数は完成系では nuqs のパーサ型を使います（第 08 章で導入）。ここでは `TaskQuery`（`lib/validation`）で受けています。
+> - `updateTag` は **必ず `"use server"` のコンテキスト（Server Action）内**で呼びます。
 
 ---
 
-## 7-9. なぜ `getSession` をキャッシュしてはいけないのか
+## 7-5. キャッシュの可視化はどこで効くか
 
-`"use cache"` でセッション取得をキャッシュすると**セッション漏洩のリスク**があります。
+`getTasks`（キャッシュ）と `updateTasksCache`（無効化）を仕込んだので、**この後それを使う画面**で効果が見えます。
+
+- **第 08 章**：タスク一覧（`TaskList`）が `getTasks` を読む → 作成・削除すると即更新される
+- **第 09 章**：ダッシュボード統計（`DASHBOARD` タグ）が同様に即更新される
+
+> NOTE
+> 一覧 UI は、URL フィルタ（nuqs）と削除ダイアログ（Zustand）が揃う第 08 章でまとめて組み立てます。ここでは「キャッシュの仕組み」を仕込むことに集中します。
+
+---
+
+## 7-6. なぜ `getSession` をキャッシュしてはいけないか
 
 ```typescript
 // ❌ 絶対にやってはいけない
 export async function getSession() {
-  'use cache';
+  "use cache";
   return auth.api.getSession({ headers: await headers() });
-  // → ユーザー A のリクエストのセッションが
-  //   ユーザー B のリクエストで返ってくる可能性がある！
-}
-
-// ✅ 正しい実装（AuthGate での実装）
-async function AuthGate({ children }) {
-  // キャッシュしない（毎回 DB に問い合わせる）
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  // ...
+  // → ユーザー A のセッションが B に返る可能性（リクエストスコープの値の混入）
 }
 ```
 
-リクエストスコープの値（ヘッダー・Cookie）はキャッシュに含めてはいけません。
+リクエストスコープの値（ヘッダー・Cookie）はキャッシュに含めてはいけません。`AuthGate`（第 06 章）は**毎回 DB に問い合わせ**ています。
 
 ---
 
 ## まとめと次のステップ
 
-この章では以下を学びました：
+- `"use cache"` でサーバー関数の結果をキャッシュし、`cacheTag` でタグ付けする
+- 変更時は Server Action 内で `updateTag` を呼んで無効化する
+- `CACHE_TAGS` 定数で typo を防ぐ
+- `getSession()` はリクエストスコープの値を含むためキャッシュ禁止
 
-- `"use cache"` でサーバー関数の結果をキャッシュする
-- `cacheTag(tag)` でキャッシュに名前をつける
-- `updateTag(tag)` でタスク変更後にキャッシュを無効化する
-- `CACHE_TAGS` 定数で一元管理してタイポを防ぐ
-- `auth.api.getSession()` はリクエストスコープの値を含むためキャッシュ禁止
-
-次の第 08 章では **nuqs** で URL にフィルタ状態を保持し、**Zustand** で削除ダイアログのクライアント状態を管理します。
+次の第 08 章では **nuqs（URL フィルタ）と Zustand（削除ダイアログ）** を使い、タスク一覧 UI を組み立てます。
 
 → [第 08 章：nuqs + Zustand](./08-nuqs-zustand.md)

@@ -28,7 +28,7 @@ describe("validation/task-query-validation", () => {
   });
 
   it("不正な status はエラー", () => {
-    const result = validateTaskQuery({ status: "invalid" });
+    const result = validateTaskQuery({ status: "invalid" as never });
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.type).toBe("VALIDATION_ERROR");

@@ -3,389 +3,235 @@
 ## この章の目標
 
 > **CHECK**
-> - [ ] Zod でフォームの入力値をバリデーションできる
-> - [ ] `zodErrorToAppError()` で Zod のエラーを `AppError` に変換できる
-> - [ ] Service 層が「バリデーション → Repository 呼び出し → Result 返却」の流れで動いている
-> - [ ] Service のテストが `vi.mock` で Repository を差し替えて動く
+> - [ ] Zod の `safeParse` と `Result` への変換（`zodErrorToAppError`）を説明できる
+> - [ ] `lib/validation` の各関数が `Result` を返すことを読み取れる
+> - [ ] `taskService` が「バリデーション → Repository 呼び出し → Result 返却」で動くことを説明できる
+> - [ ] Service テストが `vi.mock` で Repository を差し替えて動く仕組みを説明できる
 
 ---
 
 > [!IMPORTANT]
-> **【より深く】この章は `lib/` の中身を読み解くオプション章です。**
-> 第 05〜10 章で使ってきた `taskService` の実装を読み解いて理解を深めます。
-> コードはリポジトリに既に存在するので、`git show answer/main:lib/...` で見比べながら進めてください。
+> **【より深く・読み解く章】`lib/` は同梱済みです。** 第 05〜09 章で使ってきた `taskService` の**実装を読み解く**章です。
 >
 > ```bash
-> git show answer/main:lib/validation/task-validation.ts         # 作成・更新バリデーション
-> git show answer/main:lib/validation/task-query-validation.ts   # 一覧クエリバリデーション
-> git show answer/main:lib/db/services/task-service.ts           # タスク Service
+> git show answer/main:lib/validation/task-validation.ts
+> git show answer/main:lib/validation/task-query-validation.ts
+> git show answer/main:lib/db/services/task-service.ts
 > ```
 
 ---
 
 ## 12-1. Zod とは
 
-**Zod** は TypeScript ファーストなバリデーションライブラリです。
+**Zod** は TypeScript ファーストなバリデーションライブラリです。第 04 章で `createInsertSchema()` から `createTaskSchema` / `updateTaskSchema` を生成しました。Service 層はそれを使います。
 
 ```typescript
-import { z } from "zod";
-
-// スキーマを定義する
-const createTaskSchema = z.object({
-  name: z.string().min(1, "タスク名は必須です").max(100),
-  description: z.string().max(500).optional(),
-  status: z.enum(["todo", "in_progress", "done"]).default("todo"),
-  priority: z.enum(["low", "medium", "high"]).default("medium"),
-});
-
-// バリデーションを実行する
-const result = createTaskSchema.safeParse({
-  name: "",          // ← min(1) 違反
-  status: "unknown", // ← enum 違反
-});
-
+const result = createTaskSchema.safeParse(data);
 if (!result.success) {
-  console.log(result.error.issues);
-  // [
-  //   { path: ["name"], message: "タスク名は必須です" },
-  //   { path: ["status"], message: "..." }
-  // ]
+  // result.error.issues に { path, message } の配列が入る
 }
 ```
-
-第 04 章で、`drizzle-zod` の `createInsertSchema()` を使って `lib/db/schema.ts` にスキーマを定義しました。そのスキーマを Service 層で使います。
 
 ---
 
 ## 12-2. Service 層の役割
 
-**Service 層** はビジネスロジックとバリデーションを担います。
-
 ```
-Server Action  →  Service  →  Repository  →  DB
-                    ↑ここ
-        ① バリデーション（入力値が正しいか）
-        ② 存在チェック（更新前に取得して確認）
-        ③ Repository を呼び出して Result を返す
+Server Action → Service → Repository → DB
+                  ↑ ここ：① 入力をバリデーション ② 存在チェック ③ Repository を呼ぶ
+                          （DB クエリは書かない）
 ```
-
-Service 層は Repository 層を呼び出しますが、**DB のクエリは書きません**。DB のことは Repository に任せます。
 
 ---
 
-## 12-3. バリデーションスキーマを定義する
+## 12-3. バリデーション（`lib/validation/`）
 
-`lib/validation/` にバリデーションスキーマを切り出します。
+バリデーション関数は**例外でなく `Result` を返す**形に揃えています。
 
-```bash
-mkdir -p lib/validation
-touch lib/validation/task-validation.ts
-touch lib/validation/task-query-validation.ts
+```typescript
+// lib/validation/task-validation.ts（同梱済み・抜粋）
+import {
+  createTaskSchema,
+  updateTaskSchema,
+  type NewTask,
+} from "@/lib/db/schema";
+import { type AppError, zodErrorToAppError } from "@/lib/errors";
+import { err, ok, type Result } from "@/lib/result";
+
+export const validateTaskData = (
+  data: Partial<NewTask>,
+): Result<NewTask, AppError> => {
+  const result = createTaskSchema.safeParse(data);
+  if (!result.success) return err(zodErrorToAppError(result.error));
+  return ok(result.data);
+};
+
+export const validateTaskUpdate = (
+  data: unknown,
+): Result<Partial<NewTask>, AppError> => {
+  const result = updateTaskSchema.safeParse(data);
+  if (!result.success) return err(zodErrorToAppError(result.error));
+  return ok(result.data);
+};
 ```
 
 ```typescript
-// lib/validation/task-validation.ts
+// lib/validation/task-query-validation.ts（同梱済み・抜粋）
 import { z } from "zod";
-import { createTaskSchema, updateTaskSchema } from "@/lib/db/schema";
+import { PRIORITY, STATUS } from "@/lib/db/schema";
 
-// フォームデータのバリデーション（作成用）
-export function validateTaskData(data: unknown) {
-  return createTaskSchema.safeParse(data);
-}
-
-// フォームデータのバリデーション（更新用）
-export function validateTaskUpdate(data: unknown) {
-  return updateTaskSchema.safeParse(data);
-}
-```
-
-```typescript
-// lib/validation/task-query-validation.ts
-import { z } from "zod";
-import type { Status, Priority } from "@/lib/db/schema";
-
-// URL クエリパラメータのバリデーション
-const taskQuerySchema = z.object({
-  name: z.string().optional(),
-  status: z.enum(["todo", "in_progress", "done"]).optional(),
-  priority: z.enum(["low", "medium", "high"]).optional(),
+export const taskQuerySchema = z.object({
+  name: z.string().trim().optional(),
+  status: z
+    .enum([STATUS.PENDING, STATUS.IN_PROGRESS, STATUS.COMPLETED, STATUS.CANCELLED])
+    .nullish(),
+  priority: z.enum([PRIORITY.LOW, PRIORITY.MEDIUM, PRIORITY.HIGH]).nullish(),
 });
 
 export type TaskQuery = z.infer<typeof taskQuerySchema>;
-
-export function validateTaskQuery(query: unknown) {
-  return taskQuerySchema.safeParse(query);
-}
+// validateTaskQuery(query) も Result を返す
 ```
+
+> NOTE
+> `status` / `priority` の値は第 04 章の `STATUS` / `PRIORITY` を流用するので、スキーマ・バリデーション・フィルタの値がすべて一致します。
 
 ---
 
-## 12-4. Service 層を実装する
+## 12-4. `taskService` を読む
 
-```bash
-mkdir -p lib/db/services
-touch lib/db/services/task-service.ts
-```
+`taskService` も**オブジェクトリテラル**です。`getTasksByQuery` / `createTask` / `updateTask` は「バリデーション → Repository」の流れで、結果はすべて `Result`。
 
 ```typescript
-// lib/db/services/task-service.ts
-import { zodErrorToAppError } from "@/lib/errors";
-import { err, isErr } from "@/lib/result";
-import type { Result } from "@/lib/result";
-import type { Task } from "@/lib/db/schema";
+// lib/db/services/task-service.ts（同梱済み）
 import { taskRepository } from "@/lib/db/repositories/task-repository";
-import { validateTaskData, validateTaskUpdate } from "@/lib/validation/task-validation";
-import { validateTaskQuery, type TaskQuery } from "@/lib/validation/task-query-validation";
-
-// ── 統計 ──────────────────────────────────────────────────────────
-
-// 全タスク数を取得する（バリデーションは不要）
-export async function getTotalCount(): Promise<Result<number>> {
-  return taskRepository.getTotalCount();
-}
-
-// ── 一覧取得 ──────────────────────────────────────────────────────
-
-// 検索クエリをバリデーションしてから Repository に渡す
-export async function getTasksByQuery(query: unknown): Promise<Result<Task[]>> {
-  // ① クエリパラメータをバリデーション
-  const parseResult = validateTaskQuery(query);
-  if (!parseResult.success) {
-    return err(zodErrorToAppError(parseResult.error));
-  }
-
-  // ② Repository を呼び出す
-  return taskRepository.getByQuery(parseResult.data);
-}
-
-// ── 単件取得 ──────────────────────────────────────────────────────
-
-export async function getTaskById(id: number): Promise<Result<Task>> {
-  return taskRepository.getById(id);
-}
-
-// ── 作成 ──────────────────────────────────────────────────────────
-
-export async function createTask(data: unknown): Promise<Result<Task>> {
-  // ① 入力値をバリデーション
-  const parseResult = validateTaskData(data);
-  if (!parseResult.success) {
-    return err(zodErrorToAppError(parseResult.error));
-  }
-
-  // ② Repository を呼び出す
-  return taskRepository.create(parseResult.data);
-}
-
-// ── 更新 ──────────────────────────────────────────────────────────
-
-export async function updateTask(
-  id: number,
-  data: unknown,
-): Promise<Result<Task>> {
-  // ① 更新データをバリデーション
-  const parseResult = validateTaskUpdate(data);
-  if (!parseResult.success) {
-    return err(zodErrorToAppError(parseResult.error));
-  }
-
-  // ② 更新前に対象タスクが存在するか確認
-  const existingResult = await taskRepository.getById(id);
-  if (isErr(existingResult)) {
-    return existingResult; // 404 をそのまま上流へ伝播
-  }
-
-  // ③ 更新を実行
-  return taskRepository.update(id, parseResult.data);
-}
-
-// ── 削除 ──────────────────────────────────────────────────────────
-
-export async function deleteTask(id: number): Promise<Result<void>> {
-  // 削除前に存在確認（存在しないものを削除しようとした場合にエラーを返す）
-  const existingResult = await taskRepository.getById(id);
-  if (isErr(existingResult)) {
-    return existingResult;
-  }
-
-  return taskRepository.deleteById(id);
-}
+import type { NewTask } from "@/lib/db/schema";
+import { isErr } from "@/lib/result";
+import {
+  type TaskQuery,
+  validateTaskQuery,
+} from "@/lib/validation/task-query-validation";
+import {
+  validateTaskData,
+  validateTaskUpdate,
+} from "@/lib/validation/task-validation";
 
 export const taskService = {
-  getTotalCount,
-  getTasksByQuery,
-  getTaskById,
-  createTask,
-  updateTask,
-  deleteTask,
+  // 統計はそのまま Repository に委譲
+  getTotalCount: () => taskRepository.getTotalCount(),
+  getStatusCounts: () => taskRepository.getStatusCounts(),
+  getPriorityCounts: () => taskRepository.getPriorityCounts(),
+  getCompletedCount: () => taskRepository.getCompletedCount(),
+
+  getAllTasks: () => taskRepository.getAll(),
+
+  // 一覧：クエリをバリデーションしてから Repository へ
+  getTasksByQuery: async (query: TaskQuery) => {
+    const validationResult = validateTaskQuery(query);
+    if (isErr(validationResult)) return validationResult;
+    return taskRepository.getByQuery(validationResult.value);
+  },
+
+  // 単件取得（メソッド名は getTask）
+  getTask: (id: number) => taskRepository.getById(id),
+
+  createTask: async (taskData: Partial<NewTask>) => {
+    const validatedResult = validateTaskData(taskData);
+    if (isErr(validatedResult)) return validatedResult;
+    return taskRepository.create(validatedResult.value);
+  },
+
+  updateTask: async (id: number, taskData: Partial<NewTask>) => {
+    const validatedResult = validateTaskUpdate(taskData);
+    if (isErr(validatedResult)) return validatedResult;
+
+    // 更新前に存在確認（無ければ 404 を伝播）
+    const existingResult = await taskRepository.getById(id);
+    if (isErr(existingResult)) return existingResult;
+
+    return taskRepository.update(id, validatedResult.value);
+  },
+
+  deleteTask: (id: number) => taskRepository.delete(id),
 };
 ```
 
+> NOTE
+> Server Action（第 05 章）が呼んでいたのはこの `taskService` です。単件取得は **`getTask`**、削除は内部で **`taskRepository.delete`** を呼びます。
+
 ---
 
-## 12-5. Service のテストを書く
+## 12-5. Service テスト（`vi.mock` で Repository を差し替え）
 
-Service のテストでは **Repository 全体を `vi.mock` で差し替えます**。これにより、Repository や DB を気にせず Service のロジックだけをテストできます。
-
-```bash
-mkdir -p lib/db/services/__tests__
-touch lib/db/services/__tests__/task-service.test.ts
-```
+Service のテストは Repository をモックし、**ビジネスロジックだけ**を検証します。
 
 ```typescript
-// lib/db/services/__tests__/task-service.test.ts
+// lib/db/services/__tests__/task-service.test.ts（同梱済み・要点）
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ok, err } from "@/lib/result";
 import { apiError } from "@/lib/errors";
+import { err, ok } from "@/lib/result";
 
-// Repository をモック（テスト用の偽物）に差し替える
 vi.mock("@/lib/db/repositories/task-repository");
 
-// モック後に import する（順序が重要）
 const { taskRepository } = await import("@/lib/db/repositories/task-repository");
 const { taskService } = await import("@/lib/db/services/task-service");
 
-// サンプルタスクデータ
 const mockTask = {
   id: 1,
-  name: "テストタスク",
+  name: "Test",
   description: null,
-  status: "todo" as const,
+  status: "pending" as const,   // ← schema の STATUS 値
   priority: "medium" as const,
-  createdAt: "2026-01-01T00:00:00.000Z",
-  updatedAt: "2026-01-01T00:00:00.000Z",
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+beforeEach(() => vi.clearAllMocks());
 
 describe("createTask", () => {
-  it("正しいデータでタスクを作成できる", async () => {
-    // Repository の create が成功する場合を設定
+  it("正しいデータで作成できる", async () => {
     vi.mocked(taskRepository.create).mockResolvedValue(ok(mockTask));
-
     const result = await taskService.createTask({
-      name: "テストタスク",
-      status: "todo",
+      name: "Test",
+      status: "pending",
       priority: "medium",
     });
-
     expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.name).toBe("テストタスク");
-    }
     expect(taskRepository.create).toHaveBeenCalledOnce();
   });
 
-  it("name が空の場合はバリデーションエラーになる", async () => {
-    const result = await taskService.createTask({
-      name: "",         // ← min(1) 違反
-      status: "todo",
-      priority: "medium",
-    });
-
+  it("name が空ならバリデーションエラー（Repository は呼ばれない）", async () => {
+    const result = await taskService.createTask({ name: "", priority: "medium" });
     expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.type).toBe("VALIDATION_ERROR");
-    }
-    // バリデーション失敗なので Repository.create は呼ばれない
+    if (!result.ok) expect(result.error.type).toBe("VALIDATION_ERROR");
     expect(taskRepository.create).not.toHaveBeenCalled();
   });
 });
 
 describe("updateTask", () => {
-  it("存在するタスクを更新できる", async () => {
-    // まず getById が成功するよう設定
-    vi.mocked(taskRepository.getById).mockResolvedValue(ok(mockTask));
-    // 次に update が成功するよう設定
-    vi.mocked(taskRepository.update).mockResolvedValue(
-      ok({ ...mockTask, name: "更新後", status: "done" as const }),
-    );
-
-    const result = await taskService.updateTask(1, {
-      name: "更新後",
-      status: "done",
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.name).toBe("更新後");
-    }
-  });
-
-  it("存在しないタスクを更新しようとすると 404 エラーになる", async () => {
-    // getById が 404 を返すよう設定
+  it("存在しないタスクは 404 を伝播（update は呼ばれない）", async () => {
     vi.mocked(taskRepository.getById).mockResolvedValue(
-      err(apiError("タスクが見つかりません", 404)),
+      err(apiError("Task not found", 404)),
     );
-
-    const result = await taskService.updateTask(9999, { name: "更新後" });
-
+    const result = await taskService.updateTask(9999, { name: "New" });
     expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.type).toBe("API_ERROR");
-    }
-    // 404 なので update は呼ばれない
+    if (!result.ok) expect(result.error.type).toBe("API_ERROR");
     expect(taskRepository.update).not.toHaveBeenCalled();
   });
 });
 ```
 
-```bash
-pnpm test
-```
-
-すべてのテストが通ることを確認します。
-
 > NOTE
-> Repository テスト（第 11 章）と Service テストの違い：
-> - Repository テスト：`:memory:` SQLite を使う（実際の DB 操作が正しいか確認）
-> - Service テスト：`vi.mock` で Repository を差し替える（ビジネスロジックだけを確認）
->
-> この分離により、それぞれを**独立して**テストできます。
-
----
-
-## 12-6. エラーの流れを追う
-
-Service → Repository を通じてエラーがどう流れるかを確認しましょう。
-
-```
-ユーザー入力「name: ""」
-     ↓
-taskService.createTask({ name: "" })
-     ↓ validateTaskData でバリデーション失敗
-     ↓ zodErrorToAppError でエラー変換
-return err({ type: "VALIDATION_ERROR", message: "タスク名は必須です", ... })
-     ↓
-Server Action が受け取る（次の章で実装）
-     ↓
-フォームにエラーを表示
-```
-
-```
-ユーザーが存在しない ID を指定して更新しようとした場合
-     ↓
-taskService.updateTask(9999, { name: "更新後" })
-     ↓ taskRepository.getById(9999) → err({ type: "API_ERROR", httpStatus: 404 })
-     ↓ isErr で検出してそのまま return
-return err({ type: "API_ERROR", httpStatus: 404 })
-     ↓
-Server Action が受け取る → 404 ページを表示するなど
-```
+> Repository テスト（第 11 章）は `:memory:` SQLite で実 DB 操作を、Service テストは `vi.mock` でロジックだけを検証 ── という**役割分担**です。
 
 ---
 
 ## まとめと次のステップ
 
-この章では以下を学びました：
+- バリデーションは `safeParse` → `zodErrorToAppError` で `Result` に変換する
+- `taskService` は「バリデーション → 存在チェック → Repository」で動くオブジェクトリテラル
+- 単件取得は `getTask`、削除は `deleteTask` → `taskRepository.delete`
+- Service テストは `vi.mock` で Repository を差し替える
 
-- Zod でフォーム入力値を型安全にバリデーションする
-- `zodErrorToAppError()` で Zod エラーを統一的な `AppError` に変換
-- Service 層は「バリデーション → 存在チェック → Repository 呼び出し」の流れで動く
-- Service テストは `vi.mock` で Repository を差し替えてロジックだけをテストする
-
-次の第 13 章では **Vitest・Biome・Lefthook** の詳細を整理し、これまで書いてきたすべてのテストを緑にします。
+次の第 13 章では、これらのテストを **Vitest** で実行し、テスト戦略を整理します。
 
 → [第 13 章：Vitest でテストを書く](./13-vitest-biome.md)

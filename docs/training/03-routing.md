@@ -4,15 +4,28 @@
 
 > **CHECK**
 > - [ ] `app/` ディレクトリの構造と URL の対応を説明できる
-> - [ ] `layout.tsx` が何をしているか説明できる
+> - [ ] `layout.tsx` のネストと「器 → 中身」の関係を説明できる
 > - [ ] ルートグループ `(authed)` の意味を説明できる
-> - [ ] `/login`・`/`・`/tasks` の 3 画面が存在し、`(authed)` グループの共通レイアウトが表示できる
+> - [ ] ルートレイアウト → `(authed)` レイアウト（共通シェル）→ 各ページの順に組み立て、`/`・`/tasks`・`/login` が表示できる
+> - [ ] 画面遷移に `<Link>` を使う理由を説明できる
+
+---
+
+> [!TIP]
+> **共通シェル（`AppSidebar` / `AppHeader` / `PageContainer`）と shadcn 部品はリポジトリに同梱済みです。**
+> この章では、それらを**レイアウトに組み込む（合成する）こと**と、**ファイル構造で URL が決まる仕組み**の理解に集中します。
+> シェルの中身（サイドバーの見た目など）は完成系を参照してください。
+>
+> ```bash
+> git show answer/main:app/\(authed\)/components/AppSidebar/index.tsx
+> git show answer/main:app/\(authed\)/components/AppHeader/index.tsx
+> ```
 
 ---
 
 ## 3-1. App Router の基本：ファイルで URL を決める
 
-Next.js App Router では、**`app/` 以下のディレクトリ構造が URL になります**。
+Next.js App Router では、**`app/` 以下のディレクトリ構造がそのまま URL になります**。
 
 ```
 app/
@@ -21,196 +34,102 @@ app/
 │   └── page.tsx       → http://localhost:3000/login
 └── tasks/
     ├── page.tsx        → http://localhost:3000/tasks
-    ├── create/
-    │   └── page.tsx    → http://localhost:3000/tasks/create
-    └── [id]/
-        └── edit/
-            └── page.tsx → http://localhost:3000/tasks/123/edit
+    └── create/
+        └── page.tsx    → http://localhost:3000/tasks/create
 ```
 
 ### 特別なファイル名
 
-| ファイル名       | 役割                                           |
-| ---------------- | ---------------------------------------------- |
-| `page.tsx`       | そのパスの画面を定義する（必須）               |
-| `layout.tsx`     | 複数ページで共有するレイアウト                 |
-| `loading.tsx`    | データ取得中に表示するローディング UI          |
-| `error.tsx`      | エラー時に表示する UI                          |
-| `not-found.tsx`  | 404 時に表示する UI                            |
+| ファイル名      | 役割                                  |
+| --------------- | ------------------------------------- |
+| `page.tsx`      | そのパスの画面を定義する（必須）      |
+| `layout.tsx`    | 複数ページで共有する**器**（レイアウト） |
+| `loading.tsx`   | データ取得中に表示するローディング UI |
+| `error.tsx`     | エラー時に表示する UI                 |
+| `not-found.tsx` | 404 時に表示する UI                   |
+
+> NOTE
+> 動的セグメント（`[id]`）とクエリ（URL 状態）はこの章では扱いません。
+> `[id]`（例: `/tasks/123/edit`）は**編集ページを作る章**で、URL のフィルタ状態は **nuqs の章（第 08 章）**で扱います。
 
 ---
 
-## 3-2. `layout.tsx` のネスト構造
+## 3-2. `layout.tsx` のネスト構造（器 → 中身）
 
-`layout.tsx` は**ネスト（入れ子）** して使います。
-
-```
-app/
-├── layout.tsx                    ← ルートレイアウト（全ページ共通）
-│   └── (authed)/
-│       ├── layout.tsx            ← 認証必須エリアのレイアウト
-│       │   ├── page.tsx          ← / （ダッシュボード）
-│       │   └── tasks/
-│       │       └── page.tsx      ← /tasks
-│       └── ...
-└── login/
-    └── page.tsx                  ← /login（レイアウトなし）
-```
-
-レンダリングの仕組み：
+`layout.tsx` は**ネスト（入れ子）** して使います。外側の layout が内側を `children` として包みます。
 
 ```
-ルートレイアウト（app/layout.tsx）
-  ↓ children として
-  認証レイアウト（app/(authed)/layout.tsx）
-    ↓ children として
-    ページ（app/(authed)/tasks/page.tsx）
+ルートレイアウト（app/layout.tsx）         ← 全ページ共通（html / body / フォント）
+  └─ 認証エリアのレイアウト（app/(authed)/layout.tsx）  ← サイドバー + ヘッダー（共通シェル）
+       └─ ページ（app/(authed)/tasks/page.tsx）          ← 各画面の中身
 ```
+
+レンダリングは「外側の器が内側を包む」イメージです。
+
+```
+RootLayout( AuthedLayout( TasksPage ) )
+```
+
+この章では、この入れ子を**外側（器）から内側（中身）へ**順番に作っていきます。
 
 ---
 
 ## 3-3. ルートグループ `(authed)` とは
 
-`(authed)` のようにカッコで囲んだディレクトリは **ルートグループ** と呼ばれます。
-
-```
-(authed)/         ← URL には影響しない
-└── tasks/
-    └── page.tsx  → /tasks（URL に "authed" は入らない）
-```
-
-**URL には影響せず、ディレクトリをグループ化するだけの仕組み**です。
-
-なぜ使うかというと、**グループ内のページだけに共通の `layout.tsx` を適用できる**からです。
+`(authed)` のようにカッコで囲んだディレクトリは **ルートグループ** です。
 
 ```
 app/
 ├── (authed)/
-│   ├── layout.tsx  ← /と/tasksにだけ適用される認証チェック付きレイアウト
+│   ├── layout.tsx  ← / と /tasks にだけ適用される共通シェル
 │   ├── page.tsx    → /
 │   └── tasks/
 │       └── page.tsx → /tasks
 └── login/
-    └── page.tsx    → /login（上の layout.tsx は適用されない）
+    └── page.tsx    → /login（(authed) の外なのでシェルは付かない）
 ```
 
----
-
-## 3-4. このプロジェクトのレイアウト構成を読む
-
-### ルートレイアウト（`app/layout.tsx`）
-
-```bash
-cat app/layout.tsx
-```
-
-```tsx
-// app/layout.tsx の役割：
-// - フォントの設定（Geist など）
-// - <html> と <body> タグ
-// - NuqsAdapter（URL 状態管理のプロバイダ）でアプリ全体を包む
-// - グローバル CSS の読み込み
-
-import type { Metadata } from "next";
-import { Geist } from "next/font/google";
-import { NuqsAdapter } from "nuqs/adapters/next/app";
-import "./globals.css";
-
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
-
-export const metadata: Metadata = {
-  title: "Dashboard Playground",
-};
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="ja">
-      <body className={geist.variable}>
-        <NuqsAdapter shallow={false}>{children}</NuqsAdapter>
-      </body>
-    </html>
-  );
-}
-```
-
-### 認証レイアウト（`app/(authed)/layout.tsx`）
-
-```bash
-cat "app/(authed)/layout.tsx"
-```
-
-このファイルには 2 つの重要な役割があります：
-
-**① `AuthGate`：DB でセッションを検証する**
-
-```tsx
-// AuthGate は (authed)/layout.tsx の中に定義されている
-async function AuthGate({ children }: { children: React.ReactNode }) {
-  // サーバーサイドでセッションを DB から取得する
-  const session = await auth.api.getSession({ headers: await headers() });
-
-  if (!session) {
-    // DB にセッションが無ければ /login へリダイレクト
-    redirect("/login");
-  }
-
-  return <>{children}</>;
-}
-```
-
-**② サイドバー + ヘッダー + コンテンツエリアの共通レイアウト**
-
-```tsx
-export default function AuthedLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <Suspense>          {/* AuthGate の非同期処理をストリームできるようにする */}
-      <AuthGate>
-        <SidebarProvider>
-          <AppSidebar />
-          <div className="flex flex-col flex-1">
-            <AppHeader />
-            <PageContainer>{children}</PageContainer>
-          </div>
-        </SidebarProvider>
-      </AuthGate>
-    </Suspense>
-  );
-}
-```
+- **URL には影響しません**（`/tasks` であって `/authed/tasks` ではない）。
+- **グループ内のページにだけ共通 layout を適用する**ために使います。
+- `/login` を `(authed)` の外に置くことで、ログイン画面にはサイドバーが付きません。
 
 > NOTE
-> `<Suspense>` で `AuthGate` を包むことで、セッション取得中もページ全体がブロックされなくなります。
-> これにより、Next.js のストリーミングレンダリングが有効になります。
+> この章の `(authed)/layout.tsx` には認証チェックはまだ入れません。
+> DB セッションを検証する `AuthGate` は **第 06 章**で、この同じファイルに追記します。
 
 ---
 
-## 3-5. ハンズオン：3 画面を作る
+## 3-4. ハンズオン①：レイアウト（器）を組む
 
-### Step 1：ルートレイアウトを作る
+実開発と同じく、**先にレイアウト（器）を組んでから**、各ページ（中身）を作ります。
 
-`app/layout.tsx` を以下のように書きます：
+### Step 1：ルートレイアウト（`app/layout.tsx`）
+
+全ページ共通の `<html>` / `<body>` とフォントを定義します。
 
 ```tsx
 // app/layout.tsx
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
-  title: "Dashboard Playground",
-  description: "Next.js ダッシュボード学習プロジェクト",
+  title: "Dashboard | Next.js",
+  description: "dashboard playground next.js",
 };
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ja">
-      <body className={`${geist.variable} font-sans antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
       </body>
     </html>
@@ -218,7 +137,110 @@ export default function RootLayout({
 }
 ```
 
-### Step 2：ログインページを作る
+> NOTE
+> ルートレイアウトはこの先の章で**追記して育てます**。
+> - 第 08 章：URL 状態管理の `NuqsAdapter` を追加
+> - 第 10 章：テーマ用の `ThemeProvider` と `suppressHydrationWarning` を追加
+>
+> 今は最小の出発版でかまいません。
+
+### Step 2：認証エリアのレイアウト（`app/(authed)/layout.tsx`）
+
+`(authed)` グループに共通シェル（サイドバー＋ヘッダー）を組み込みます。
+**シェルの部品はリポジトリに同梱済み**（`app/(authed)/components/`）なので、それを `import` して合成するだけです。
+
+```bash
+mkdir -p "app/(authed)"
+touch "app/(authed)/layout.tsx"
+```
+
+> NOTE
+> ディレクトリ名にカッコが含まれるので、`mkdir` ではクォートで囲みます。
+
+```tsx
+// app/(authed)/layout.tsx
+import { SidebarProvider } from "@/components/ui/sidebar";
+import AppHeader from "./components/AppHeader";
+import AppSidebar from "./components/AppSidebar";
+import PageContainer from "./components/PageContainer";
+
+export default function AuthedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <SidebarProvider>
+      {/* 左：サイドバー（同梱済み。ナビリンクのみ。第 06 章でユーザー情報とログアウトを追記） */}
+      <AppSidebar />
+      <main className="w-full">
+        {/* 上：ヘッダー（同梱済み。第 10 章でテーマ切替ボタンを配線） */}
+        <AppHeader />
+        {/* 各ページの中身がここに入る */}
+        <PageContainer>{children}</PageContainer>
+      </main>
+    </SidebarProvider>
+  );
+}
+```
+
+> NOTE
+> ここに**認証チェックはまだありません**。第 06 章で、この `AuthedLayout` の `children` を
+> `<Suspense>` と `AuthGate`（DB セッション検証）で包む形に追記します。
+> 完成形は `git show answer/main:app/\(authed\)/layout.tsx` で確認できます。
+
+---
+
+## 3-5. ハンズオン②：ページ（中身）を作る
+
+器ができたので、各画面の `page.tsx` を作ります。中身はこの章ではプレースホルダで OK です（各機能は後続章で実装します）。
+
+### Step 3：ダッシュボード（`/`）
+
+> NOTE
+> ルートグループの `(authed)/page.tsx` が `/` を担当します。クローン時点の仮トップページ `app/page.tsx` は不要になる（`/` が重複する）ので削除します。
+>
+> ```bash
+> rm app/page.tsx
+> ```
+
+```tsx
+// app/(authed)/page.tsx
+export default function DashboardPage() {
+  return (
+    <div className="space-y-2">
+      <h1 className="text-2xl font-bold">ダッシュボード</h1>
+      <p className="text-muted-foreground">
+        タスク統計をここに表示します（第 09 章で実装）
+      </p>
+    </div>
+  );
+}
+```
+
+### Step 4：タスク一覧（`/tasks`）
+
+```bash
+mkdir -p "app/(authed)/tasks"
+```
+
+```tsx
+// app/(authed)/tasks/page.tsx
+export default function TasksPage() {
+  return (
+    <div className="space-y-2">
+      <h1 className="text-2xl font-bold">タスク一覧</h1>
+      <p className="text-muted-foreground">
+        タスクをここに表示します（第 05・07・08 章で実装）
+      </p>
+    </div>
+  );
+}
+```
+
+### Step 5：ログイン（`/login`）
+
+`(authed)` の**外**に置くので、サイドバーは付きません。
 
 ```bash
 mkdir -p app/login
@@ -230,199 +252,80 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">ログイン</h1>
-        <p className="text-muted-foreground">Google でサインインしてください</p>
-        {/* 第 06 章で Google ボタンを追加します */}
-        <button
-          type="button"
-          className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-md"
-        >
-          Google でログイン（準備中）
-        </button>
+        <h1 className="text-2xl font-bold">ログイン</h1>
+        <p className="mt-2 text-muted-foreground">
+          Google でサインインします（第 06 章で実装）
+        </p>
       </div>
     </div>
   );
 }
 ```
 
-### Step 3：認証必須エリアを作る
+---
 
-```bash
-# ルートグループのディレクトリを作成（カッコ付き）
-mkdir -p "app/(authed)"
-```
-
-> NOTE
-> ディレクトリ名にカッコが含まれるので、`mkdir` コマンドではクォートで囲みます。
-
-```tsx
-// app/(authed)/layout.tsx（最小限の実装）
-// 第 06 章で認証チェックを追加します
-export default function AuthedLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex min-h-screen">
-      {/* サイドバー（第 03 章後半で追加） */}
-      <nav className="w-64 bg-sidebar p-4 border-r border-sidebar-border">
-        <p className="font-bold text-sidebar-foreground">Dashboard</p>
-        <ul className="mt-4 space-y-2">
-          <li>
-            <a href="/" className="text-sm text-sidebar-foreground hover:underline">
-              ホーム
-            </a>
-          </li>
-          <li>
-            <a href="/tasks" className="text-sm text-sidebar-foreground hover:underline">
-              タスク
-            </a>
-          </li>
-        </ul>
-      </nav>
-      {/* メインコンテンツ */}
-      <main className="flex-1 p-8">{children}</main>
-    </div>
-  );
-}
-```
-
-### Step 4：ダッシュボードページ（`/`）を作る
-
-```tsx
-// app/(authed)/page.tsx
-export default function DashboardPage() {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">ダッシュボード</h1>
-      <p className="text-muted-foreground">
-        タスク統計がここに表示されます（第 09 章で実装）
-      </p>
-    </div>
-  );
-}
-```
-
-### Step 5：タスク一覧ページ（`/tasks`）を作る
-
-```bash
-mkdir -p "app/(authed)/tasks"
-```
-
-```tsx
-// app/(authed)/tasks/page.tsx
-export default function TasksPage() {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">タスク一覧</h1>
-      <p className="text-muted-foreground">
-        タスクがここに表示されます（第 05〜07 章で実装）
-      </p>
-    </div>
-  );
-}
-```
-
-### Step 6：動作確認
+## 3-6. ハンズオン③：動作確認
 
 ```bash
 pnpm dev
 ```
 
-以下の URL にアクセスして確認します：
-
-- `http://localhost:3000/` → ダッシュボード（サイドバー付き）
-- `http://localhost:3000/login` → ログイン画面
-- `http://localhost:3000/tasks` → タスク一覧（サイドバー付き）
+| URL | 期待する表示 |
+| --- | --- |
+| `http://localhost:3000/` | ダッシュボード（**サイドバー＋ヘッダー付き**） |
+| `http://localhost:3000/tasks` | タスク一覧（**サイドバー＋ヘッダー付き**） |
+| `http://localhost:3000/login` | ログイン（**サイドバーなし**） |
 
 > TRY
-> - サイドバーのリンクをクリックして画面遷移することを確認しましょう
-> - `/login` にはサイドバーが表示されないことを確認しましょう（`(authed)/layout.tsx` が適用されないため）
+> - サイドバーの「Dashboard」「Tasks」をクリックして遷移を確認しましょう。
+> - `/login` にだけサイドバーが付かないことを確認しましょう（`(authed)/layout.tsx` が適用されないため）。
 
 <details>
-<summary>HINT：`/login` にもサイドバーが表示されてしまう場合</summary>
+<summary>HINT：`/login` にもサイドバーが表示されてしまう</summary>
 
-`app/login/page.tsx` が `app/(authed)/layout.tsx` と **同じネスト階層にない**か確認してください。
+`app/login/page.tsx` が `(authed)` の**外**にあるか確認してください。
 
-正しい構造：
 ```
 app/
 ├── (authed)/
-│   ├── layout.tsx   ← /と/tasksに適用
+│   ├── layout.tsx   ← / と /tasks に適用
 │   ├── page.tsx     → /
-│   └── tasks/
-│       └── page.tsx → /tasks
-└── login/           ← (authed) の外に出す
-    └── page.tsx     → /login
+│   └── tasks/page.tsx → /tasks
+└── login/page.tsx   ← (authed) の外
 ```
+
+</details>
+
+<details>
+<summary>HINT：サイドバーが表示されない / import エラーになる</summary>
+
+- 共通シェルは `app/(authed)/components/` に同梱済みです。`import AppSidebar from "./components/AppSidebar";` のパスが正しいか確認してください。
+- `SidebarProvider` は `@/components/ui/sidebar` から import します（`(authed)/layout.tsx` で `AppSidebar` を `SidebarProvider` で包む必要があります）。
 
 </details>
 
 ---
 
-## 3-6. 動的ルートと `searchParams`
+## 3-7. `<Link>` でページ遷移する
 
-このプロジェクトでは以下の動的ルートが使われています。
-
-### 動的セグメント `[id]`
-
-```
-app/(authed)/tasks/[id]/edit/page.tsx → /tasks/123/edit
-```
-
-`params` として ID を受け取ります：
+サイドバーのナビゲーションは、すでに **`<Link>`** で実装されています（同梱済みの `AppSidebar`）。
 
 ```tsx
-// app/(authed)/tasks/[id]/edit/page.tsx
-export default async function EditTaskPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;  // Next.js 16 では Promise
-  return <div>タスク {id} を編集</div>;
-}
-```
-
-> NOTE
-> Next.js 16 では `params` と `searchParams` が `Promise<...>` になりました。
-> 必ず `await` してから使います。
-
-### `searchParams`（URL クエリパラメータ）
-
-```
-/tasks?name=会議&status=in_progress
-```
-
-```tsx
-// page.tsx で searchParams を受け取る
-export default async function TasksPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ name?: string; status?: string }>;
-}) {
-  const { name, status } = await searchParams;
-  // ...
-}
-```
-
----
-
-## 3-7. `Link` コンポーネントでページ遷移する
-
-```tsx
+// app/(authed)/components/AppSidebar/index.tsx（抜粋）
 import Link from "next/link";
-
-// <a> タグの代わりに Link を使う
-// → ページ全体のリロードなしにクライアントサイドで遷移する
-<Link href="/tasks">タスク一覧へ</Link>
-<Link href={`/tasks/${task.id}/edit`}>編集</Link>
+// ...
+<SidebarMenuButton asChild>
+  <Link href={item.url}>
+    <item.icon />
+    <span>{item.title}</span>
+  </Link>
+</SidebarMenuButton>
 ```
 
 > NOTE
-> Next.js では `<a href="...">` の代わりに `<Link href="...">` を使うことを推奨しています。
-> `Link` はプリフェッチ（事前読み込み）も行うため、遷移が素早くなります。
+> 画面遷移には `<a href="...">` ではなく **`<Link href="...">`** を使います。
+> `<Link>` はページ全体をリロードせずクライアントサイドで遷移し、さらにリンク先を**プリフェッチ**するため遷移が高速です。
+> `<a>` を使うと毎回フルリロードが発生します。
 
 ---
 
@@ -431,10 +334,12 @@ import Link from "next/link";
 この章では以下を学びました：
 
 - `app/` のディレクトリ構造が URL になる
-- `layout.tsx` はネストして共通レイアウトを定義する
-- `(authed)` ルートグループは URL に影響せずレイアウトをグループ化する
-- `[id]` で動的セグメント、`searchParams` でクエリパラメータを受け取る
+- `layout.tsx` はネストし、外側の器が内側（`children`）を包む
+- 実開発の流れに沿って **レイアウト（器）→ ページ（中身）** の順に組む
+- `(authed)` ルートグループは URL に影響せず、共通シェルをグループ化する
+- 共通シェルは同梱済みの実物を `import` して合成する（この先の章で**同じファイルに追記して育てる**）
+- 画面遷移は `<Link>` を使う
 
-次の第 04 章では **Drizzle ORM と SQLite** を使ってデータベースを構築します。タスクテーブルのスキーマを定義し、実際にデータを操作します。
+次の第 04 章では **Drizzle ORM と SQLite** でデータベースを構築します。
 
 → [第 04 章：Drizzle + SQLite](./04-drizzle-sqlite.md)

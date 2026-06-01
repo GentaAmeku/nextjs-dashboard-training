@@ -171,8 +171,8 @@ flowchart TD
 type TaskViewModel = {
   id: number;
   name: string;
-  statusLabel: string;   // "in_progress" → "進行中"
-  priorityLabel: string; // "high" → "高"
+  statusLabel: string;   // "in_progress" → "In Progress"
+  priorityLabel: string; // "high" → "High"
   formattedDate: string; // "2026-05-09"
   isOverdue: boolean;    // 期限切れかどうか（計算済み）
 };
@@ -470,7 +470,7 @@ app/(authed)/tasks/
 ├── components/
 │   ├── TaskList/
 │   │   ├── container.tsx         ← データ取得（RSC）
-│   │   └── presentation.tsx      ← 表示（props を受け取るだけ）
+│   │   └── presentational.tsx    ← 表示（props を受け取るだけ）
 │   ├── TaskFilters/
 │   │   └── index.tsx             ← URL state の読み書き（Client）
 │   └── DeleteTaskDialog/
@@ -491,10 +491,10 @@ app/(authed)/tasks/
 export async function TaskListContainer({ searchParams }) {
   const result = await getTasks(searchParams); // サーバー側でフェッチ
   if (isErr(result)) return <ErrorMessage error={result.error} />;
-  return <TaskListPresentation tasks={result.value} />;
+  return <TaskListPresentational tasks={result.value} />;
 }
 
-// presentation.tsx：表示の責務
+// presentational.tsx：表示の責務
 // ・非同期処理なし
 // ・テストしやすい（props を渡すだけで動作確認可能）
 // ・Storybook でも使いやすい
